@@ -25,6 +25,10 @@ async def search(q: str | None = None):
     return HTMLResponse("")
 
 
+def search_address(starting_address: str) -> JSONResponse:
+    return JSONResponse({"address": "hellow orld"})
+
+
 @app.get("/store")
 async def store_search(q: str | None = None):
     stores = search_store(q)
@@ -33,7 +37,7 @@ async def store_search(q: str | None = None):
         f"""
             <div class="store-card">
                 <div class="store-header">
-                    <h3>#{stores.loc[i]["No Mag."]}</h3>
+                    <p>#{stores.loc[i]["No Mag."]}</p>
                     <div class="store-card-must-visit">
                         <label for="store{stores.loc[i]["No Mag."]}">Must visit</label>
                         <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" />
@@ -47,10 +51,6 @@ async def store_search(q: str | None = None):
     ]
 
     return HTMLResponse("\n".join(htmlStores))
-
-
-def search_address(starting_address: str) -> JSONResponse:
-    return JSONResponse({"address": "hellow orld"})
 
 
 def search_store(store: str | None) -> pd.DataFrame:

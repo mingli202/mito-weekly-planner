@@ -136,6 +136,10 @@
         background-color: var(--black);
       }
 
+      input::placeholder {
+        font-style: italic;
+      }
+
       button:hover {
         cursor: pointer;
       }
@@ -175,6 +179,10 @@
       .input-container > div {
         display: flex;
         gap: 0.5rem;
+      }
+
+      .input-container > label {
+        font-size: 1.3rem;
       }
 
       .input-decorator {
@@ -222,69 +230,88 @@
   </head>
   <body class="lato-regular">
     <main>
-      <div class="title">
-        <p>MITO WEEKLY PLANNER</p>
-      </div>
+      <!--<div class="title">-->
+      <!--  <p>MITO WEEKLY PLANNER</p>-->
+      <!--</div>-->
       <div
         style="
           display: flex;
           gap: 1rem;
           flex-basis: 100%;
           width: 100%;
-          padding: 1rem;
+          padding: 0.5rem;
           overflow: hidden;
         "
       >
         <div class="map">map</div>
-        <div class="col">
-          <form class="input-container" hx-get="/search">
-            <label for="starting_address">Starting Address</label>
-            <div>
-              <input
-                id="starting_address"
-                name="q"
-                type="text"
-                required
-                placeholder="Search..."
-                autocomplete="off"
-                hx-trigger="keyup changed delay:250"
-                hx-get="/search"
-                hx-syn="closest form:abort"
-              />
-              <button type="submit">
-                <i class="fa-solid fa-magnifying-glass-location"></i>
-              </button>
-            </div>
-          </form>
-          <div id="starting_address_results">Search results</div>
-        </div>
-        <div class="col">
-          <form
-            class="input-container"
-            hx-get="/store"
-            hx-target="#store_search_results"
-          >
-            <label for="store_search">Search Stores</label>
-            <div>
-              <input
-                id="store_search"
-                type="text"
-                name="q"
-                placeholder="#Store, Name, Address..."
-                autocomplete="off"
-                hx-get="/store"
-                hx-trigger="keyup changed delay:250ms"
-                hx-target="#store_search_results"
-                hx-sync="closest form:abort"
-              />
 
-              <button type="submit">
-                <i class="fa-solid fa-magnifying-glass"></i>
-              </button>
+        <div class="col">
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              gap: 0.5rem;
+              flex-basis: 25%;
+              flex-shrink: 0;
+            "
+          >
+            <form class="input-container" hx-get="/search">
+              <label for="starting_address">Starting Address</label>
+              <div>
+                <input
+                  id="starting_address"
+                  name="q"
+                  type="text"
+                  placeholder="Search..."
+                  autocomplete="off"
+                  hx-trigger="keyup changed delay:200"
+                  hx-get="/search"
+                  hx-syn="closest form:abort"
+                />
+                <button type="submit">
+                  <i class="fa-solid fa-magnifying-glass-location"></i>
+                </button>
+              </div>
+            </form>
+            <div id="starting_address_results"></div>
+            <div>Must visit</div>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+              gap: 0.5rem;
+            "
+          >
+            <form
+              class="input-container"
+              hx-get="/store"
+              hx-target="#store_search_results"
+            >
+              <label for="store_search">Search Stores</label>
+              <div>
+                <input
+                  id="store_search"
+                  type="text"
+                  name="q"
+                  placeholder="#Store, Name, Address..."
+                  autocomplete="off"
+                  hx-get="/store"
+                  hx-trigger="keyup changed delay:200"
+                  hx-target="#store_search_results"
+                  hx-sync="closest form:abort"
+                />
+
+                <button type="submit">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+              </div>
+            </form>
+            <div id="store_search_results">
+              <div hx-get="/store" hx-trigger="load" hx-swap="outerHTML" />
             </div>
-          </form>
-          <div id="store_search_results">
-            <div hx-get="/store" hx-trigger="load" hx-swap="outerHTML" />
           </div>
         </div>
       </div>
