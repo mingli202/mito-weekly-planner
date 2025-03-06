@@ -35,8 +35,8 @@ async def store_search(q: str | None = None):
                 <div class="store-header">
                     <h3>#{stores.loc[i]["No Mag."]}</h3>
                     <div class="store-card-must-visit">
-                        <label for="store123456">Must visit</label>
-                        <input type="checkbox" id="store123456" />
+                        <label for="store{stores.loc[i]["No Mag."]}">Must visit</label>
+                        <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" />
                     </div>
                 </div>
                 <p class="store-card-info">{stores.loc[i]["Nom Mag."]}</p>
