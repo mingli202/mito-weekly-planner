@@ -255,12 +255,14 @@
             <div>
               <input
                 id="store_search"
+                type="text"
                 name="q"
-                placeholder="Store number, Name, Address..."
+                placeholder="#Store, Name, Address..."
                 autocomplete="off"
                 hx-get="/store"
-                hx-trigger="keyup changed delay:500ms"
+                hx-trigger="keyup changed delay:250ms"
                 hx-target="#store_search_results"
+                hx-sync="closest form:abort"
               />
 
               <button type="submit">
@@ -269,17 +271,7 @@
             </div>
           </form>
           <div id="store_search_results">
-            <div class="store-card">
-              <div class="store-header">
-                <h3>#123456</h3>
-                <div class="store-card-must-visit">
-                  <label for="store123456">Must visit</label>
-                  <input type="checkbox" id="store123456" />
-                </div>
-              </div>
-              <p class="store-card-info">C-IGA* Supermarché Laplante Inc</p>
-              <p class="store-card-info">420 2ème Avenue local #1</p>
-            </div>
+            <div hx-get="/store" hx-trigger="load" hx-swap="outerHTML" />
           </div>
         </div>
       </div>
