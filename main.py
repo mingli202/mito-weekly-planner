@@ -14,7 +14,7 @@ app.mount("/static", StaticFiles(directory="public/static", html=True), name="st
 
 @app.get("/")
 async def root():
-    return FileResponse("./public/static/index.html")
+    return FileResponse("public/static/index.html")
 
 
 @app.get("/search")
@@ -28,9 +28,25 @@ async def search(q: str | None = None):
 @app.get("/store")
 async def store_search(q: str | None = None):
     stores = search_store(q)
-    print(stores)
 
-    return HTMLResponse("")
+    htmlStores = [
+        f"""
+            <div class="store-card">
+                <div class="store-header">
+                    <h3>#{stores.loc[i]["No Mag."]}</h3>
+                    <div class="store-card-must-visit">
+                        <label for="store123456">Must visit</label>
+                        <input type="checkbox" id="store123456" />
+                    </div>
+                </div>
+                <p class="store-card-info">{stores.loc[i]["Nom Mag."]}</p>
+                <p class="store-card-info">{stores.loc[i]["Adresse Mag."]}, {stores.loc[i]["Ville"]}, {stores.loc[i]["Postal"]}</p>
+            </div>
+        """
+        for i in stores.index
+    ]
+
+    return HTMLResponse("\n".join(htmlStores))
 
 
 def search_address(starting_address: str) -> JSONResponse:
@@ -38,7 +54,7 @@ def search_address(starting_address: str) -> JSONResponse:
 
 
 def search_store(store: str | None) -> pd.DataFrame:
-    data = pd.read_csv("./public/stores_location.csv")
+    data = pd.read_csv("public/stores_location.csv")
 
     if not store or store == "":
         return data
@@ -49,16 +65,18 @@ def search_store(store: str | None) -> pd.DataFrame:
                 any(
                     re.search(_store, s, re.I) is not None
                     for s in [
-                        str(d["No Mag."]),
-                        d["Nom Mag."],
-                        d["Adresse Mag."],
-                        d["Ville"],
-                        d["Postal"],
+                        str(data.loc[i]["No Mag."]),
+                        data.loc[i]["Nom Mag."],
+                        data.loc[i]["Adresse Mag."],
+                        data.loc[i]["Ville"],
+                        data.loc[i]["Postal"],
                     ]
                 )
                 for _store in store.split(" ")
             )
-            for d in [data.loc[i] for i in data.index]
+            if not store.startswith("#")
+            else str(data.loc[i]["No Mag."]).startswith(store[1:])
+            for i in data.index
         ]
     ]
 
