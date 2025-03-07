@@ -359,6 +359,11 @@
         if (visit_element) {
           visit_element.remove();
           important = important.filter((im) => im != id);
+
+          const store_element = document.getElementById(`store${id}`);
+          if (store_element) {
+            store_element.checked = false;
+          }
         } else {
           important.push(id);
 
@@ -381,10 +386,6 @@
 
           must_visit.append(el);
         }
-      }
-
-      function handleStoreLoad(id) {
-        console.log({ id });
       }
 
       function getImportant() {

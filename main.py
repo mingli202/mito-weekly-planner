@@ -53,7 +53,7 @@ async def store_search(
                 <div class="store-header">
                     <p>#{stores.loc[i]["No Mag."]}</p>
                     <div class="store-card-must-visit">
-                        <label for="store{stores.loc[i]["No Mag."]}">Must visit</label>
+                        <label for="store{stores.loc[i]["No Mag."]}">Urgent</label>
                         <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" onchange="toggleImportant({stores.loc[i]["No Mag."]})" {"checked" if stores.loc[i]["No Mag."] in important else ""} />
                     </div>
                 </div>
@@ -64,7 +64,7 @@ async def store_search(
         for i in stores.index
     ]
 
-    return HTMLResponse("\n".join(htmlStores))
+    return HTMLResponse("".join(htmlStores))
 
 
 def search_store(store: str | None) -> pd.DataFrame:
