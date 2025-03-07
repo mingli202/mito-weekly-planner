@@ -6,13 +6,16 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import pandas as pd
 from pydantic import BaseModel
 import json
+import requests
 
 app = FastAPI(
     title="Mito Weekly Planner",
     description="App that lets you efficiently plan out which stores to go based on your location and urgency of visits.",
 )
 
-app.mount("/static", StaticFiles(directory="public/static", html=True), name="static")
+StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
+
+app.mount("/static", StaticFiles(directory="public/static"), name="static")
 
 
 @app.get("/")
@@ -20,24 +23,89 @@ async def root():
     return FileResponse("public/static/index.html")
 
 
-@app.get("/search")
-async def search(q: str | None = None):
-    if q and q != "":
-        return search_address(q)
-
-    return HTMLResponse("")
-
-
-def search_address(starting_address: str) -> JSONResponse:
-    return JSONResponse({"address": "hellow orld"})
-
-
-class Store(BaseModel):
+class R(BaseModel):
     q: str | None = None
+
+
+@app.post("/api/search")
+async def search(req: R):
+    q = req.q
+
+    predictions = search_address(q)
+
+    htmlElements = [
+        f"""
+            <button type="button"
+                hx-post="/api/setStartingAddress"
+                hx-ext="json-enc"
+                hx-swap="outerHTML"
+                hx-target="#res-container"
+                hx-vals='{{"p": "{p}"}}'
+                hx-params="not q"
+            >
+                {p}
+            </button>
+        """
+        for p in predictions
+    ]
+
+    return HTMLResponse(
+        f"""
+          <div
+            id="starting_address_results"
+            style="visibility: {"hidden" if len(htmlElements) == 0 else "visible"}"
+          > {"".join(htmlElements)}
+          </div>
+        """
+    )
+
+
+def search_address(starting_address: str | None) -> list[str]:
+    if starting_address is None or starting_address == "":
+        return []
+
+    print("request sent")
+
+    res = requests.post(
+        url="https://places.googleapis.com/v1/places:autocomplete",
+        json={
+            "input": starting_address,
+            "locationBias": {
+                "rectangle": {
+                    "high": {
+                        "latitude": 45.71429912457236,
+                        "longitude": -74.04305828564718,
+                    },
+                    "low": {
+                        "latitude": 45.406702295712975,
+                        "longitude": -73.44293059335915,
+                    },
+                }
+            },
+        },
+        headers={
+            "X-Goog-Api-Key": "AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g",
+            "X-Goog-FieldMask": "suggestions.placePrediction.text.text",
+            "Content-Type": "application/json",
+        },
+    )
+
+    if not res.ok:
+        return []
+
+    suggestions = res.json().get("suggestions")
+
+    if suggestions is None:
+        return []
+
+    return [sug["placePrediction"]["text"]["text"] for sug in suggestions]
+
+
+class Store(R):
     important: str | None = None
 
 
-@app.post("/store")
+@app.post("/api/store")
 async def store_search(
     store: Store,
 ):
@@ -68,7 +136,7 @@ async def store_search(
 
 
 def search_store(store: str | None) -> pd.DataFrame:
-    data = pd.read_csv("public/stores_location.csv")
+    data = pd.read_csv("public/static/stores_location.csv")
 
     if not store or store == "":
         return data
@@ -95,3 +163,22 @@ def search_store(store: str | None) -> pd.DataFrame:
     ]
 
     return data
+
+
+class SetAddrModel(BaseModel):
+    p: str | None = None
+
+
+@app.post("/api/setStartingAddress")
+async def setStartingAddress(req: SetAddrModel):
+    p = req.p
+
+    return HTMLResponse(f"""
+        <div class="must-visit-card">
+          <i
+            class="fa-solid fa-xmark"
+            style="color: var(--secondary-text)"
+          ></i>
+          <span>{p}</span>
+        </div>
+    """)
