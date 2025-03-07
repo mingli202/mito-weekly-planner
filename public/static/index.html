@@ -21,231 +21,8 @@
     ></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/json-enc.js"></script>
 
-    <style>
-      .lato-thin {
-        font-family: "Lato", sans-serif;
-        font-weight: 100;
-        font-style: normal;
-      }
-
-      .lato-light {
-        font-family: "Lato", sans-serif;
-        font-weight: 300;
-        font-style: normal;
-      }
-
-      .lato-regular {
-        font-family: "Lato", sans-serif;
-        font-weight: 400;
-        font-style: normal;
-      }
-
-      .lato-bold {
-        font-family: "Lato", sans-serif;
-        font-weight: 700;
-        font-style: normal;
-      }
-
-      .lato-black {
-        font-family: "Lato", sans-serif;
-        font-weight: 900;
-        font-style: normal;
-      }
-
-      .lato-thin-italic {
-        font-family: "Lato", sans-serif;
-        font-weight: 100;
-        font-style: italic;
-      }
-
-      .lato-light-italic {
-        font-family: "Lato", sans-serif;
-        font-weight: 300;
-        font-style: italic;
-      }
-
-      .lato-regular-italic {
-        font-family: "Lato", sans-serif;
-        font-weight: 400;
-        font-style: italic;
-      }
-
-      .lato-bold-italic {
-        font-family: "Lato", sans-serif;
-        font-weight: 700;
-        font-style: italic;
-      }
-
-      .lato-black-italic {
-        font-family: "Lato", sans-serif;
-        font-weight: 900;
-        font-style: italic;
-      }
-
-      :root {
-        --black: #07060b;
-        --green: #7ad03a;
-        --red: #a00;
-        --orange: #ffba00;
-        --blue: #2ea2cc;
-        --primary: #720eec;
-        --primary-text: #fcfbfe;
-        --secondary: #e9e6ed;
-        --secondary-text: #515151;
-        --highlight: #958e09;
-        --highligh-text: white;
-        --content-bg: #fff;
-        --subtext: #767676;
-      }
-
-      * {
-        padding: 0px;
-        margin: 0px;
-        box-sizing: border-box;
-        min-width: 0px;
-        outline: none;
-        /*outline: 1px solid red;*/
-        color: var(--primary-text);
-        background-color: transparent;
-        border: none;
-      }
-
-      .debug {
-        outline: 1px solid red;
-      }
-
-      html {
-        font-size: 16px;
-      }
-
-      main {
-        background-color: var(--black);
-        width: 100dvw;
-        height: 100dvh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-
-      input {
-        padding: 0.25rem;
-        width: 100%;
-        border-bottom: 1px solid var(--green);
-        background-color: var(--black);
-      }
-
-      input::placeholder {
-        font-style: italic;
-      }
-
-      button:hover {
-        cursor: pointer;
-      }
-
-      .title {
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.5rem;
-        width: 100dvw;
-        flex-shrink: 0;
-      }
-
-      .map {
-        flex-basis: 40%;
-        padding: 0.5rem;
-      }
-
-      .col {
-        flex-basis: 30%;
-        padding: 0.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        overflow: hidden;
-        height: 100%;
-      }
-
-      .input-container {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        flex-shrink: 0;
-      }
-
-      .input-container > div {
-        display: flex;
-        gap: 0.5rem;
-      }
-
-      .input-container > label {
-        font-size: 1.3rem;
-      }
-
-      .input-decorator {
-        background-color: var(--green);
-        width: 100%;
-        height: 2px;
-      }
-
-      .store-card {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-      }
-
-      .store-header {
-        display: flex;
-        justify-content: space-between;
-      }
-
-      .store-card-info {
-        font-size: 0.9rem;
-        color: var(--subtext);
-      }
-
-      .store-card-must-visit {
-        display: flex;
-        gap: 0.5rem;
-      }
-
-      .store-card-must-visit > input {
-        width: fit-content;
-      }
-
-      #store_search_results {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        /*scrollbar-width: thin;*/
-        scrollbar-color: var(--secondary-text) transparent;
-      }
-
-      #must-visit {
-        display: flex;
-        gap: 0.5rem;
-      }
-
-      #must-visit > div {
-        background-color: rgba(255, 255, 255, 0.1);
-        padding: 0.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.25rem;
-      }
-
-      .important-btn {
-        display: flex;
-        gap: 0.25rem;
-        align-items: center;
-        justify-content: center;
-      }
-    </style>
+    <link rel="stylesheet" href="/static/css/index.css" />
+    <script src="/static/js/index.js"></script>
   </head>
   <body class="lato-regular">
     <main>
@@ -274,27 +51,43 @@
               gap: 0.5rem;
               flex-basis: 25%;
               flex-shrink: 0;
+              position: relative;
             "
           >
-            <form class="input-container" hx-get="/search">
+            <form
+              class="input-container"
+              style="position: relative"
+              hx-post="/api/search"
+              hx-ext="json-enc"
+              hx-target="#starting_address_results"
+              hx-swap="outerHTML"
+              id="address_form"
+            >
               <label for="starting_address">Starting Address</label>
-              <div>
+              <div id="res-container">
                 <input
                   id="starting_address"
                   name="q"
                   type="text"
                   placeholder="Search..."
                   autocomplete="off"
-                  hx-trigger="keyup changed delay:200"
-                  hx-get="/search"
-                  hx-syn="closest form:abort"
+                  hx-trigger="keyup changed delay:500"
+                  hx-post="/api/search"
+                  hx-sync="closest form:abort"
+                  hx-ext="json-enc"
+                  hx-target="#starting_address_results"
+                  hx-swap="outerHTML"
                 />
                 <button type="submit">
                   <i class="fa-solid fa-magnifying-glass-location"></i>
                 </button>
+                <div
+                  id="starting_address_results"
+                  style="visibility: hidden"
+                ></div>
               </div>
             </form>
-            <div id="starting_address_results"></div>
+
             <div id="must-visit">
               <p id="urgent-placeholder">
                 Urgent stores that must be visited will be displayed here.
@@ -312,12 +105,11 @@
           >
             <form
               class="input-container"
-              hx-post="/store"
+              hx-post="/api/store"
               hx-target="#store_search_results"
               hx-ext="json-enc"
               hx-vals="js:{important: JSON.stringify(getImportant())}"
             >
-              <!--hx-val="js:{important: important}"-->
               <label for="store_search">Search Stores</label>
               <div>
                 <input
@@ -326,8 +118,8 @@
                   name="q"
                   placeholder="#Store, Name, Address..."
                   autocomplete="off"
-                  hx-post="/store"
-                  hx-trigger="keyup changed delay:200"
+                  hx-post="/api/store"
+                  hx-trigger="keyup changed"
                   hx-target="#store_search_results"
                   hx-sync="closest form:abort"
                   hx-ext="json-enc"
@@ -341,7 +133,7 @@
             </form>
             <div id="store_search_results">
               <div
-                hx-post="/store"
+                hx-post="/api/store"
                 hx-trigger="load"
                 hx-swap="outerHTML"
                 hx-ext="json-enc"
@@ -356,65 +148,5 @@
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g&libraries=maps,marker&v=beta"
       defer
     ></script>
-
-    <script>
-      let important = [];
-      function toggleImportant(id) {
-        if (important.length == 0) {
-          const urgent_placeholder =
-            document.getElementById("urgent-placeholder");
-
-          urgent_placeholder.remove();
-        }
-
-        const visit_element = document.getElementById(`must-visit-${id}`);
-
-        if (visit_element) {
-          visit_element.remove();
-          important = important.filter((im) => im != id);
-
-          const store_element = document.getElementById(`store${id}`);
-          if (store_element) {
-            store_element.checked = false;
-          }
-        } else {
-          important.push(id);
-
-          const must_visit = document.getElementById("must-visit");
-
-          const el = document.createElement("div");
-          el.id = `must-visit-${id}`;
-          el.innerHTML = `
-            <button
-              onclick="toggleImportant(${id})"
-              style="height: min-content;"
-            >
-              <i
-                class="fa-solid fa-xmark"
-                style="color: var(--secondary-text)"
-              ></i>
-            </button>
-            <span>${id}</span>
-          `;
-
-          must_visit.append(el);
-        }
-
-        if (important.length == 0) {
-          const must_visit = document.getElementById("must-visit");
-
-          const p = document.createElement("p");
-          p.id = "urgent-placeholder";
-          p.innerText =
-            "Urgent stores that must be visited will be displayed here.";
-
-          must_visit.append(p);
-        }
-      }
-
-      function getImportant() {
-        return important;
-      }
-    </script>
   </body>
 </html>
