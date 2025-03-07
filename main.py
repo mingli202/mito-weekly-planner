@@ -1,13 +1,20 @@
 import re
-from typing import Annotated
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
 import pandas as pd
 from pydantic import BaseModel
 import json
 import requests
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+class Settings(BaseSettings):
+    gmapsApiKey: str = ""
+    model_config = SettingsConfigDict(env_file=".env")
+
+
+settings = Settings()
 app = FastAPI(
     title="Mito Weekly Planner",
     description="App that lets you efficiently plan out which stores to go based on your location and urgency of visits.",
@@ -16,6 +23,8 @@ app = FastAPI(
 StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
 
 app.mount("/static", StaticFiles(directory="public/static"), name="static")
+
+starting_address = ""
 
 
 @app.get("/")
@@ -61,7 +70,7 @@ async def search(req: R):
 
 
 def search_address(starting_address: str | None) -> list[str]:
-    if starting_address is None or starting_address == "":
+    if starting_address is None or starting_address.strip() == "":
         return []
 
     print("request sent")
@@ -84,7 +93,7 @@ def search_address(starting_address: str | None) -> list[str]:
             },
         },
         headers={
-            "X-Goog-Api-Key": "AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g",
+            "X-Goog-Api-Key": settings.gmapsApiKey,
             "X-Goog-FieldMask": "suggestions.placePrediction.text.text",
             "Content-Type": "application/json",
         },
@@ -138,7 +147,7 @@ async def store_search(
 def search_store(store: str | None) -> pd.DataFrame:
     data = pd.read_csv("public/static/stores_location.csv")
 
-    if not store or store == "":
+    if not store or store.strip() == "":
         return data
 
     data = data.loc[
@@ -172,6 +181,7 @@ class SetAddrModel(BaseModel):
 @app.post("/api/setStartingAddress")
 async def setStartingAddress(req: SetAddrModel):
     p = req.p
+    starting_address = p
 
     return HTMLResponse(f"""
         <div 
