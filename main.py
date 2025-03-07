@@ -1,8 +1,11 @@
 import re
-from fastapi import FastAPI
+from typing import Annotated
+from fastapi import FastAPI, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import pandas as pd
+from pydantic import BaseModel
+import json
 
 app = FastAPI(
     title="Mito Weekly Planner",
@@ -29,9 +32,20 @@ def search_address(starting_address: str) -> JSONResponse:
     return JSONResponse({"address": "hellow orld"})
 
 
-@app.get("/store")
-async def store_search(q: str | None = None):
-    stores = search_store(q)
+class Store(BaseModel):
+    q: str | None = None
+    important: str | None = None
+
+
+@app.post("/store")
+async def store_search(
+    store: Store,
+):
+    stores = search_store(store.q)
+
+    important = []
+    if store.important:
+        important = json.loads(store.important)
 
     htmlStores = [
         f"""
@@ -40,7 +54,7 @@ async def store_search(q: str | None = None):
                     <p>#{stores.loc[i]["No Mag."]}</p>
                     <div class="store-card-must-visit">
                         <label for="store{stores.loc[i]["No Mag."]}">Must visit</label>
-                        <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" />
+                        <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" onchange="toggleImportant({stores.loc[i]["No Mag."]})" {"checked" if stores.loc[i]["No Mag."] in important else ""} />
                     </div>
                 </div>
                 <p class="store-card-info">{stores.loc[i]["Nom Mag."]}</p>

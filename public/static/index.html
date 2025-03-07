@@ -4,24 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mito Weekly Planner</title>
-
     <script
       src="https://unpkg.com/htmx.org@2.0.4"
       integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
       crossorigin="anonymous"
     ></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"
       rel="stylesheet"
     />
-
     <script
       src="https://kit.fontawesome.com/132a3eb674.js"
       crossorigin="anonymous"
     ></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/json-enc.js"></script>
 
     <style>
       .lato-thin {
@@ -155,12 +153,12 @@
       }
 
       .map {
-        flex-basis: 50%;
+        flex-basis: 40%;
         padding: 0.5rem;
       }
 
       .col {
-        flex-basis: 25%;
+        flex-basis: 30%;
         padding: 0.5rem;
         display: flex;
         flex-direction: column;
@@ -226,6 +224,27 @@
         /*scrollbar-width: thin;*/
         scrollbar-color: var(--secondary-text) transparent;
       }
+
+      #must-visit {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      #must-visit > div {
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 0.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+      }
+
+      .important-btn {
+        display: flex;
+        gap: 0.25rem;
+        align-items: center;
+        justify-content: center;
+      }
     </style>
   </head>
   <body class="lato-regular">
@@ -274,7 +293,7 @@
               </div>
             </form>
             <div id="starting_address_results"></div>
-            <div>Must visit</div>
+            <div id="must-visit"></div>
           </div>
 
           <div
@@ -287,9 +306,12 @@
           >
             <form
               class="input-container"
-              hx-get="/store"
+              hx-post="/store"
               hx-target="#store_search_results"
+              hx-ext="json-enc"
+              hx-vals="js:{important: JSON.stringify(getImportant())}"
             >
+              <!--hx-val="js:{important: important}"-->
               <label for="store_search">Search Stores</label>
               <div>
                 <input
@@ -298,10 +320,12 @@
                   name="q"
                   placeholder="#Store, Name, Address..."
                   autocomplete="off"
-                  hx-get="/store"
+                  hx-post="/store"
                   hx-trigger="keyup changed delay:200"
                   hx-target="#store_search_results"
                   hx-sync="closest form:abort"
+                  hx-ext="json-enc"
+                  hx-vals="js:{important: JSON.stringify(getImportant())}"
                 />
 
                 <button type="submit">
@@ -310,7 +334,12 @@
               </div>
             </form>
             <div id="store_search_results">
-              <div hx-get="/store" hx-trigger="load" hx-swap="outerHTML" />
+              <div
+                hx-post="/store"
+                hx-trigger="load"
+                hx-swap="outerHTML"
+                hx-ext="json-enc"
+              />
             </div>
           </div>
         </div>
@@ -321,5 +350,46 @@
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g&libraries=maps,marker&v=beta"
       defer
     ></script>
+
+    <script>
+      let important = [];
+      function toggleImportant(id) {
+        const visit_element = document.getElementById(`must-visit-${id}`);
+
+        if (visit_element) {
+          visit_element.remove();
+          important = important.filter((im) => im != id);
+        } else {
+          important.push(id);
+
+          const must_visit = document.getElementById("must-visit");
+
+          const el = document.createElement("div");
+          el.id = `must-visit-${id}`;
+          el.innerHTML = `
+            <button
+              onclick="toggleImportant(${id})"
+              style="height: min-content;"
+            >
+              <i
+                class="fa-solid fa-xmark"
+                style="color: var(--secondary-text)"
+              ></i>
+            </button>
+            <span>${id}</span>
+          `;
+
+          must_visit.append(el);
+        }
+      }
+
+      function handleStoreLoad(id) {
+        console.log({ id });
+      }
+
+      function getImportant() {
+        return important;
+      }
+    </script>
   </body>
 </html>
