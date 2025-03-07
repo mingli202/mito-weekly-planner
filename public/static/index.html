@@ -264,6 +264,8 @@
       >
         <div class="map">map</div>
 
+        <div class="col">plans</div>
+
         <div class="col">
           <div
             style="
@@ -293,7 +295,11 @@
               </div>
             </form>
             <div id="starting_address_results"></div>
-            <div id="must-visit"></div>
+            <div id="must-visit">
+              <p id="urgent-placeholder">
+                Urgent stores that must be visited will be displayed here.
+              </p>
+            </div>
           </div>
 
           <div
@@ -354,6 +360,13 @@
     <script>
       let important = [];
       function toggleImportant(id) {
+        if (important.length == 0) {
+          const urgent_placeholder =
+            document.getElementById("urgent-placeholder");
+
+          urgent_placeholder.remove();
+        }
+
         const visit_element = document.getElementById(`must-visit-${id}`);
 
         if (visit_element) {
@@ -385,6 +398,17 @@
           `;
 
           must_visit.append(el);
+        }
+
+        if (important.length == 0) {
+          const must_visit = document.getElementById("must-visit");
+
+          const p = document.createElement("p");
+          p.id = "urgent-placeholder";
+          p.innerText =
+            "Urgent stores that must be visited will be displayed here.";
+
+          must_visit.append(p);
         }
       }
 
