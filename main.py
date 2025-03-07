@@ -174,11 +174,46 @@ async def setStartingAddress(req: SetAddrModel):
     p = req.p
 
     return HTMLResponse(f"""
-        <div class="must-visit-card">
+        <div 
+            class="must-visit-card"
+            id="selected_address"
+        >
           <i
             class="fa-solid fa-xmark"
             style="color: var(--secondary-text)"
+            hx-get="/api/removeStartingAddress"
+            hx-trigger="click"
+            hx-swap="outerHTML"
+            hx-target="#selected_address"
           ></i>
           <span>{p}</span>
         </div>
+    """)
+
+
+@app.get("/api/removeStartingAddress")
+async def removeStartingAddress():
+    return HTMLResponse("""
+      <div id="res-container">
+        <input
+          id="starting_address"
+          name="q"
+          type="text"
+          placeholder="Search..."
+          autocomplete="off"
+          hx-trigger="keyup changed delay:500"
+          hx-post="/api/search"
+          hx-sync="closest form:abort"
+          hx-ext="json-enc"
+          hx-target="#starting_address_results"
+          hx-swap="outerHTML"
+        />
+        <button type="submit">
+          <i class="fa-solid fa-magnifying-glass-location"></i>
+        </button>
+        <div
+          id="starting_address_results"
+          style="visibility: hidden"
+        ></div>
+      </div>
     """)
