@@ -145,7 +145,7 @@ async def store_search(
 
 
 def search_store(store: str | None) -> pd.DataFrame:
-    data = pd.read_csv("public/static/stores_location.csv")
+    data = pd.read_csv("public/static/data/stores_location.csv")
 
     if not store or store.strip() == "":
         return data
