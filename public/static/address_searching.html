@@ -1,0 +1,90 @@
+<div class="col">
+  <div
+    style="
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex-basis: 25%;
+      flex-shrink: 0;
+      position: relative;
+    "
+  >
+    <form
+      class="input-container"
+      style="position: relative"
+      hx-post="/api/search"
+      hx-ext="json-enc"
+      hx-target="#starting_address_results"
+      hx-swap="outerHTML"
+      id="address_form"
+    >
+      <label for="starting_address">Starting Address</label>
+      <div id="res-container">
+        <input
+          id="starting_address"
+          name="q"
+          type="text"
+          placeholder="Search..."
+          autocomplete="off"
+          hx-trigger="keyup changed delay:500"
+          hx-post="/api/search"
+          hx-sync="closest form:abort"
+          hx-ext="json-enc"
+          hx-target="#starting_address_results"
+          hx-swap="outerHTML"
+        />
+        <button type="submit">
+          <i class="fa-solid fa-magnifying-glass-location"></i>
+        </button>
+        <div id="starting_address_results" style="visibility: hidden"></div>
+      </div>
+    </form>
+
+    <div id="must-visit">
+      <p id="urgent-placeholder">
+        Urgent stores that must be visited will be displayed here.
+      </p>
+    </div>
+  </div>
+
+  <div
+    style="display: flex; flex-direction: column; overflow: hidden; gap: 0.5rem"
+  >
+    <form
+      class="input-container"
+      hx-post="/api/store"
+      hx-target="#store_search_results"
+      hx-ext="json-enc"
+      hx-vals="js:{important: JSON.stringify(getImportant())}"
+    >
+      <label for="store_search">Search Stores</label>
+      <div>
+        <input
+          id="store_search"
+          type="text"
+          name="q"
+          placeholder="#Store, Name, Address..."
+          autocomplete="off"
+          hx-post="/api/store"
+          hx-trigger="keyup changed"
+          hx-target="#store_search_results"
+          hx-sync="closest form:abort"
+          hx-ext="json-enc"
+          hx-vals="js:{important: JSON.stringify(getImportant())}"
+        />
+
+        <button type="submit">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </div>
+    </form>
+    <div id="store_search_results">
+      <div
+        hx-post="/api/store"
+        hx-trigger="load"
+        hx-swap="outerHTML"
+        hx-ext="json-enc"
+      />
+    </div>
+  </div>
+</div>
