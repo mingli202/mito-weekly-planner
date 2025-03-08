@@ -1,7 +1,7 @@
 import re
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse
 import pandas as pd
 import json
 import requests
@@ -150,12 +150,17 @@ async def store_search(
                     <button
                         hx-post="/api/store/location"
                         type="button"
-                        hx-vals='{{"q": "{stores.loc[i]["No Mag."]}"}}'
+                        hx-vals='{{"q": "{stores.loc[i]["No Mag."]}", "action": "setCenter"}}'
                         hx-ext="json-enc"
                     >#{stores.loc[i]["No Mag."]}</button>
                     <div class="store-card-must-visit">
                         <label for="store{stores.loc[i]["No Mag."]}">Urgent</label>
-                        <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" onchange="toggleImportant({stores.loc[i]["No Mag."]})" {"checked" if stores.loc[i]["No Mag."] in important else ""} />
+                        <input
+                            type="checkbox"
+                            id="store{stores.loc[i]["No Mag."]}"
+                            onchange="toggleImportant({stores.loc[i]["No Mag."]})" 
+                            {"checked" if stores.loc[i]["No Mag."] in important else ""} 
+                        />
                     </div>
                 </div>
                 <p class="store-card-info">{stores.loc[i]["Nom Mag."]}</p>
@@ -288,7 +293,7 @@ async def test() -> Res:
 
 
 @app.post("/api/store/location")
-async def setCenter(req: Req) -> Res:
+async def location(req: Req) -> Res:
     no = req.q
 
     left = 0
@@ -305,6 +310,4 @@ async def setCenter(req: Req) -> Res:
         else:
             break
 
-    return Res(
-        html="<div>/<div>", data={"action": "setCenter", "location": locations[middle]}
-    )
+    return Res(data={"action": req.action, "location": locations[middle]})

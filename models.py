@@ -1,9 +1,9 @@
-from fastapi import Response
 from pydantic import BaseModel
 
 
 class Req(BaseModel):
     q: str | None = None
+    action: str | None = None
 
 
 class SetAddrModel(BaseModel):
