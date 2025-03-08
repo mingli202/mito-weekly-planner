@@ -31,15 +31,17 @@ async function addMarker(location) {
   }
 
   const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+  const home = {
+    lat: location.latitude,
+    lng: location.longitude,
+  };
 
   startingMarker = new AdvancedMarkerElement({
     map: map,
-    position: {
-      lat: location.latitude,
-      lng: location.longitude,
-    },
+    position: home,
     title: "Starting Address",
   });
+  map.setCenter(home);
 }
 
 async function initMap() {
@@ -51,6 +53,7 @@ async function initMap() {
     center: { lat: 45.55090134296241, lng: -73.68035515427918 },
     zoom: 11,
     mapId: "my-map",
+    streetViewControl: false,
   });
 
   infoWindow = new InfoWindow();
@@ -60,12 +63,17 @@ async function initMap() {
 
   for (const location of json) {
     const icon = document.createElement("div");
-    icon.innerHTML = '<i class="fa-solid fa-store"></i>';
+    icon.className = "pin";
+    icon.innerHTML = `
+      #${location["No Mag."]}
+      <div class="pin-arrow"></div>
+    `;
 
     const pin = new PinElement({
       scale: 1.0,
       background: "#7ad03a",
       borderColor: "#7ad03a",
+      glyphColor: "#ffffff",
       glyph: icon,
     });
 
@@ -73,13 +81,11 @@ async function initMap() {
       map: map,
       position: { lat: location.latitude, lng: location.longitude },
       title: `#${location["No Mag."]}`,
-      content: pin.element,
+      content: icon,
       gmpClickable: true,
     });
 
-    marker.addListener("click", ({ domEvent, latLng }) => {
-      const { target } = domEvent;
-
+    marker.addListener("click", () => {
       infoWindow.close();
       infoWindow.setContent(marker.title);
       infoWindow.open(marker.map, marker);
