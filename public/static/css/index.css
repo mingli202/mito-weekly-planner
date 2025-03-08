@@ -117,6 +117,7 @@ input::placeholder {
 button {
   background-color: var(--black);
   color: var(--primary-text);
+  font-size: 1rem;
 }
 
 button:hover {

@@ -20,6 +20,13 @@ body.addEventListener("htmx:beforeSwap", async (e) => {
         case "setStartingAddress": {
           await addMarker(data.location);
         }
+        case "setCenter": {
+          e.detail.shouldSwap = false;
+          map.setCenter({
+            lat: data.location.latitude,
+            lng: data.location.longitude,
+          });
+        }
       }
     }
   } catch (e) {}
@@ -46,8 +53,7 @@ async function addMarker(location) {
 
 async function initMap() {
   const { Map, InfoWindow } = await google.maps.importLibrary("maps");
-  const { AdvancedMarkerElement, PinElement } =
-    await google.maps.importLibrary("marker");
+  const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
 
   map = new Map(document.getElementById("map"), {
     center: { lat: 45.55090134296241, lng: -73.68035515427918 },
@@ -68,14 +74,6 @@ async function initMap() {
       #${location["No Mag."]}
       <div class="pin-arrow"></div>
     `;
-
-    const pin = new PinElement({
-      scale: 1.0,
-      background: "#7ad03a",
-      borderColor: "#7ad03a",
-      glyphColor: "#ffffff",
-      glyph: icon,
-    });
 
     const marker = new AdvancedMarkerElement({
       map: map,

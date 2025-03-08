@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from models import Req, Res, SetAddrModel, StoreInfo
 
+StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
+
 
 class Settings(BaseSettings):
     gmapsApiKey: str = ""
@@ -21,12 +23,15 @@ app = FastAPI(
     description="App that lets you efficiently plan out which stores to go based on your location and urgency of visits.",
 )
 
-StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
 
 app.mount("/static", StaticFiles(directory="public/static"), name="static")
 
 starting_address = ""
 data = pd.read_csv("public/static/data/stores_location.csv")
+
+locations = []
+with open("public/static/data/locations-fixed.json", "r") as file:
+    locations = json.loads(file.read())
 
 
 @app.get("/")
@@ -142,7 +147,12 @@ async def store_search(
         f"""
             <div class="store-card">
                 <div class="store-header">
-                    <p>#{stores.loc[i]["No Mag."]}</p>
+                    <button
+                        hx-post="/api/store/location"
+                        type="button"
+                        hx-vals='{{"q": "{stores.loc[i]["No Mag."]}"}}'
+                        hx-ext="json-enc"
+                    >#{stores.loc[i]["No Mag."]}</button>
                     <div class="store-card-must-visit">
                         <label for="store{stores.loc[i]["No Mag."]}">Urgent</label>
                         <input type="checkbox" id="store{stores.loc[i]["No Mag."]}" onchange="toggleImportant({stores.loc[i]["No Mag."]})" {"checked" if stores.loc[i]["No Mag."] in important else ""} />
@@ -274,4 +284,27 @@ async def test() -> Res:
         data={
             "starting_address": "asdf",
         },
+    )
+
+
+@app.post("/api/store/location")
+async def setCenter(req: Req) -> Res:
+    no = req.q
+
+    left = 0
+    right = locations.__len__() - 1
+    middle = (left + right) // 2
+
+    while left <= right:
+        middle = (left + right) // 2
+
+        if no < locations[middle]["No Mag."]:
+            right = middle - 1
+        elif no > locations[middle]["No Mag."]:
+            left = middle + 1
+        else:
+            break
+
+    return Res(
+        html="<div>/<div>", data={"action": "setCenter", "location": locations[middle]}
     )
