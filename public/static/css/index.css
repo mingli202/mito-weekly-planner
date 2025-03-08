@@ -128,9 +128,14 @@ button:hover {
   flex-shrink: 0;
 }
 
-.map {
+#map-container {
   flex-basis: 40%;
   padding: 0.5rem;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
 }
 
 .col {
@@ -156,6 +161,11 @@ button:hover {
 }
 
 .input-container > label {
+  font-size: 1.3rem;
+}
+
+.header {
+  font-weight: normal;
   font-size: 1.3rem;
 }
 

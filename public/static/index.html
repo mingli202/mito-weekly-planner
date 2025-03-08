@@ -23,12 +23,10 @@
 
     <link rel="stylesheet" href="/static/css/index.css" />
     <script src="/static/js/index.js"></script>
+    <script src="/static/js/module.js" type="module"></script>
   </head>
   <body class="lato-regular">
     <main>
-      <!--<div class="title">-->
-      <!--  <p>MITO WEEKLY PLANNER</p>-->
-      <!--</div>-->
       <div
         style="
           display: flex;
@@ -39,114 +37,64 @@
           overflow: hidden;
         "
       >
-        <div class="map">map</div>
-
-        <div class="col">plans</div>
+        <div id="map-container">
+          <div id="map"></div>
+        </div>
 
         <div class="col">
-          <div
-            style="
-              display: flex;
-              flex-direction: column;
-              gap: 0.5rem;
-              flex-basis: 25%;
-              flex-shrink: 0;
-              position: relative;
-            "
-          >
-            <form
-              class="input-container"
-              style="position: relative"
-              hx-post="/api/search"
-              hx-ext="json-enc"
-              hx-target="#starting_address_results"
-              hx-swap="outerHTML"
-              id="address_form"
-            >
-              <label for="starting_address">Starting Address</label>
-              <div id="res-container">
-                <input
-                  id="starting_address"
-                  name="q"
-                  type="text"
-                  placeholder="Search..."
-                  autocomplete="off"
-                  hx-trigger="keyup changed delay:500"
-                  hx-post="/api/search"
-                  hx-sync="closest form:abort"
-                  hx-ext="json-enc"
-                  hx-target="#starting_address_results"
-                  hx-swap="outerHTML"
-                />
-                <button type="submit">
-                  <i class="fa-solid fa-magnifying-glass-location"></i>
-                </button>
-                <div
-                  id="starting_address_results"
-                  style="visibility: hidden"
-                ></div>
-              </div>
-            </form>
-
-            <div id="must-visit">
-              <p id="urgent-placeholder">
-                Urgent stores that must be visited will be displayed here.
-              </p>
-            </div>
-          </div>
-
-          <div
-            style="
-              display: flex;
-              flex-direction: column;
-              overflow: hidden;
-              gap: 0.5rem;
-            "
-          >
-            <form
-              class="input-container"
-              hx-post="/api/store"
-              hx-target="#store_search_results"
-              hx-ext="json-enc"
-              hx-vals="js:{important: JSON.stringify(getImportant())}"
-            >
-              <label for="store_search">Search Stores</label>
-              <div>
-                <input
-                  id="store_search"
-                  type="text"
-                  name="q"
-                  placeholder="#Store, Name, Address..."
-                  autocomplete="off"
-                  hx-post="/api/store"
-                  hx-trigger="keyup changed"
-                  hx-target="#store_search_results"
-                  hx-sync="closest form:abort"
-                  hx-ext="json-enc"
-                  hx-vals="js:{important: JSON.stringify(getImportant())}"
-                />
-
-                <button type="submit">
-                  <i class="fa-solid fa-magnifying-glass"></i>
-                </button>
-              </div>
-            </form>
-            <div id="store_search_results">
-              <div
-                hx-post="/api/store"
-                hx-trigger="load"
-                hx-swap="outerHTML"
-                hx-ext="json-enc"
-              />
-            </div>
-          </div>
+          <h3 class="header">Plans</h3>
+          <button hx-get="/test">test</button>
         </div>
+
+        <div
+          hx-get="/static/address_searching.html"
+          hx-swap="outerHTML"
+          hx-trigger="load"
+        />
       </div>
     </main>
 
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g&libraries=maps,marker&v=beta"
-      defer
-    ></script>
+    <script>
+      ((g) => {
+        var h,
+          a,
+          k,
+          p = "The Google Maps JavaScript API",
+          c = "google",
+          l = "importLibrary",
+          q = "__ib__",
+          m = document,
+          b = window;
+        b = b[c] || (b[c] = {});
+        var d = b.maps || (b.maps = {}),
+          r = new Set(),
+          e = new URLSearchParams(),
+          u = () =>
+            h ||
+            (h = new Promise(async (f, n) => {
+              await (a = m.createElement("script"));
+              e.set("libraries", [...r] + "");
+              for (k in g)
+                e.set(
+                  k.replace(/[A-Z]/g, (t) => "_" + t[0].toLowerCase()),
+                  g[k],
+                );
+              e.set("callback", c + ".maps." + q);
+              a.src = `https://maps.${c}apis.com/maps/api/js?` + e;
+              d[q] = f;
+              a.onerror = () => (h = n(Error(p + " could not load.")));
+              a.nonce = m.querySelector("script[nonce]")?.nonce || "";
+              m.head.append(a);
+            }));
+        d[l]
+          ? console.warn(p + " only loads once. Ignoring:", g)
+          : (d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)));
+      })({
+        key: "AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g",
+        v: "quarterly",
+        // Use the 'v' parameter to indicate the version to use (weekly, beta, alpha, etc.).
+        // Add other bootstrap parameters as needed, using camel case.
+      });
+    </script>
   </body>
 </html>

@@ -1,12 +1,13 @@
 import re
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import pandas as pd
-from pydantic import BaseModel
 import json
 import requests
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from models import Req, Res, SetAddrModel
 
 
 class Settings(BaseSettings):
@@ -32,12 +33,8 @@ async def root():
     return FileResponse("public/static/index.html")
 
 
-class R(BaseModel):
-    q: str | None = None
-
-
 @app.post("/api/search")
-async def search(req: R):
+async def search(req: Req) -> Res:
     q = req.q
 
     predictions = search_address(q)
@@ -49,17 +46,17 @@ async def search(req: R):
                 hx-ext="json-enc"
                 hx-swap="outerHTML"
                 hx-target="#res-container"
-                hx-vals='{{"p": "{p}"}}'
+                hx-vals='{{"p": "{p[1]}", "placeId": "{p[0]}"}}'
                 hx-params="not q"
             >
-                {p}
+                {p[1]}
             </button>
         """
         for p in predictions
     ]
 
-    return HTMLResponse(
-        f"""
+    return Res(
+        html=f"""
           <div
             id="starting_address_results"
             style="visibility: {"hidden" if len(htmlElements) == 0 else "visible"}"
@@ -69,7 +66,7 @@ async def search(req: R):
     )
 
 
-def search_address(starting_address: str | None) -> list[str]:
+def search_address(starting_address: str | None) -> list[tuple[str, str]]:
     if starting_address is None or starting_address.strip() == "":
         return []
 
@@ -94,7 +91,7 @@ def search_address(starting_address: str | None) -> list[str]:
         },
         headers={
             "X-Goog-Api-Key": settings.gmapsApiKey,
-            "X-Goog-FieldMask": "suggestions.placePrediction.text.text",
+            "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
             "Content-Type": "application/json",
         },
     )
@@ -107,17 +104,20 @@ def search_address(starting_address: str | None) -> list[str]:
     if suggestions is None:
         return []
 
-    return [sug["placePrediction"]["text"]["text"] for sug in suggestions]
+    return [
+        (sug["placePrediction"]["placeId"], sug["placePrediction"]["text"]["text"])
+        for sug in suggestions
+    ]
 
 
-class Store(R):
+class Store(Req):
     important: str | None = None
 
 
 @app.post("/api/store")
 async def store_search(
     store: Store,
-):
+) -> Res:
     stores = search_store(store.q)
 
     important = []
@@ -141,7 +141,7 @@ async def store_search(
         for i in stores.index
     ]
 
-    return HTMLResponse("".join(htmlStores))
+    return Res(html="".join(htmlStores))
 
 
 def search_store(store: str | None) -> pd.DataFrame:
@@ -174,16 +174,22 @@ def search_store(store: str | None) -> pd.DataFrame:
     return data
 
 
-class SetAddrModel(BaseModel):
-    p: str | None = None
-
-
 @app.post("/api/setStartingAddress")
-async def setStartingAddress(req: SetAddrModel):
+async def setStartingAddress(req: SetAddrModel) -> Res:
     p = req.p
     starting_address = p
 
-    return HTMLResponse(f"""
+    placeRes = requests.get(
+        f"https://places.googleapis.com/v1/places/{req.placeId}",
+        headers={
+            "X-Goog-Api-Key": settings.gmapsApiKey,
+            "X-Goog-FieldMask": "location",
+            "Content-Type": "application/json",
+        },
+    )
+
+    return Res(
+        html=f"""
         <div 
             class="must-visit-card"
             id="selected_address"
@@ -198,12 +204,15 @@ async def setStartingAddress(req: SetAddrModel):
           ></i>
           <span>{p}</span>
         </div>
-    """)
+    """,
+        data={"action": "setStartingAddress", "location": placeRes.json()["location"]},
+    )
 
 
 @app.get("/api/removeStartingAddress")
-async def removeStartingAddress():
-    return HTMLResponse("""
+async def removeStartingAddress() -> Res:
+    return Res(
+        html="""
       <div id="res-container">
         <input
           id="starting_address"
@@ -226,4 +235,31 @@ async def removeStartingAddress():
           style="visibility: hidden"
         ></div>
       </div>
-    """)
+    """,
+        data={"action": "removeStartingAddress"},
+    )
+
+
+@app.get("/test")
+async def test() -> Res:
+    return Res(
+        html="""
+        <div 
+            class="must-visit-card"
+            id="selected_address"
+        >
+          <i
+            class="fa-solid fa-xmark"
+            style="color: var(--secondary-text)"
+            hx-get="/api/removeStartingAddress"
+            hx-trigger="click"
+            hx-swap="outerHTML"
+            hx-target="#selected_address"
+          ></i>
+          <span>asdf</span>
+        </div>
+    """,
+        data={
+            "starting_address": "asdf",
+        },
+    )
