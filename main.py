@@ -7,7 +7,7 @@ import json
 import requests
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from models import Req, Res, SetAddrModel
+from models import Req, Res, SetAddrModel, StoreInfo
 
 
 class Settings(BaseSettings):
@@ -26,6 +26,7 @@ StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
 app.mount("/static", StaticFiles(directory="public/static"), name="static")
 
 starting_address = ""
+data = pd.read_csv("public/static/data/stores_location.csv")
 
 
 @app.get("/")
@@ -114,6 +115,19 @@ class Store(Req):
     important: str | None = None
 
 
+@app.get("/api/store/{id}")
+async def store_info(id: int) -> StoreInfo:
+    store = data.loc[data["No Mag."] == id].to_numpy()[0]
+
+    return StoreInfo(
+        number=store[0],
+        name=store[1],
+        addr=store[2],
+        city=store[3],
+        postalCode=store[4],
+    )
+
+
 @app.post("/api/store")
 async def store_search(
     store: Store,
@@ -145,12 +159,12 @@ async def store_search(
 
 
 def search_store(store: str | None) -> pd.DataFrame:
-    data = pd.read_csv("public/static/data/stores_location.csv")
+    # data = pd.read_csv("public/static/data/stores_location.csv")
 
     if not store or store.strip() == "":
         return data
 
-    data = data.loc[
+    return data.loc[
         [
             all(
                 any(
@@ -170,8 +184,6 @@ def search_store(store: str | None) -> pd.DataFrame:
             for i in data.index
         ]
     ]
-
-    return data
 
 
 @app.post("/api/setStartingAddress")

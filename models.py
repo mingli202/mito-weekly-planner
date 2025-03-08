@@ -14,3 +14,11 @@ class SetAddrModel(BaseModel):
 class Res(BaseModel):
     html: str = ""
     data: dict = {}
+
+
+class StoreInfo(BaseModel):
+    number: int
+    name: str
+    addr: str
+    city: str
+    postalCode: str

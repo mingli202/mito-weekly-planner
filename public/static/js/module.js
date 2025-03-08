@@ -85,9 +85,21 @@ async function initMap() {
       gmpClickable: true,
     });
 
-    marker.addListener("click", () => {
+    marker.addListener("click", async () => {
+      const res = await fetch(`/api/store/${location["No Mag."]}`);
+      const data = await res.json();
+
       infoWindow.close();
-      infoWindow.setContent(marker.title);
+      infoWindow.setContent(`
+        <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+          <div style="font-size: 1rem; color: black; font-weight: bold;">Store #${data["number"]}</div>
+          <div>${data["name"]}</div>
+          <div>
+            <div>${data["addr"]}</div>
+            <div>${data["city"]}, ${data["postalCode"]}</div>
+          </div>
+        </div>
+      `);
       infoWindow.open(marker.map, marker);
     });
 
