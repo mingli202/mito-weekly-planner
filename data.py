@@ -55,21 +55,26 @@ else:
 """
 
 
-def loc(lat, lng):
-    return {"latitude": lat, "longitude": lng}
+def loc(lat, lng, d):
+    return {
+        "No Mag.": d["No Mag."],
+        "index": d["index"],
+        "latitude": lat,
+        "longitude": lng,
+    }
 
 
 with open("public/static/data/locations.json", "r") as file:
     locations = json.loads(file.read())
 
-    locations[17] = loc(47.8253313612993, -69.55423773112572)
-    locations[43] = loc(45.13603191049802, -71.80524055528183)
-    locations[74] = loc(45.49362880858445, -73.50159030238679)
-    locations[77] = loc(45.623092963992306, -74.59373800238156)
-    locations[99] = loc(45.437422536064055, -73.68758645751039)
-    locations[138] = loc(45.89208793398586, -73.29560871401394)
-    locations[146] = loc(45.38786262688279, -71.95798818282371)
-    locations[150] = loc(47.38232469398187, -68.33797471729301)
+    locations[17] = loc(47.8253313612993, -69.55423773112572, locations[17])
+    locations[43] = loc(45.13603191049802, -71.80524055528183, locations[43])
+    locations[74] = loc(45.49362880858445, -73.50159030238679, locations[74])
+    locations[77] = loc(45.623092963992306, -74.59373800238156, locations[77])
+    locations[99] = loc(45.437422536064055, -73.68758645751039, locations[99])
+    locations[138] = loc(45.89208793398586, -73.29560871401394, locations[138])
+    locations[146] = loc(45.38786262688279, -71.95798818282371, locations[146])
+    locations[150] = loc(47.38232469398187, -68.33797471729301, locations[150])
 
 with open("public/static/data/locations-fixed.json", "w") as file:
     file.write(json.dumps(locations, indent=2))
