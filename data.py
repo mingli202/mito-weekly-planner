@@ -2,6 +2,9 @@ import json
 import pandas as pd
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 data = pd.read_csv("public/static/data/stores_location.csv")
 
@@ -23,7 +26,7 @@ else:
                 "textQuery": addr,
             },
             headers={
-                "X-Goog-Api-Key": "AIzaSyCQrnHYiPKBQO0ImU926iIECNkzH3Pp92g",
+                "X-Goog-Api-Key": os.getenv("gmapsApiKey"),
                 "X-Goog-FieldMask": "places.location",
             },
         )
