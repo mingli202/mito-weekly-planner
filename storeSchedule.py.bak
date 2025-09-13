@@ -1,0 +1,627 @@
+from __future__ import annotations
+
+import itertools
+import math
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Optional, Set, Tuple
+from pydantic import BaseModel
+
+
+class Location(BaseModel):
+    no: int
+    lat: float
+    lng: float
+    index: int
+
+
+# You said Location is a Pydantic model:
+# class Location(BaseModel):
+#     no: int
+#     lat: float
+#     lng: float
+
+
+EARTH_RADIUS_KM = 6371.0088
+
+
+@dataclass(frozen=True)
+class Store:
+    no: int
+    lat: float
+    lng: float
+
+
+@dataclass
+class DayPlan:
+    name: str
+    store_nos_in_order: List[int]
+    distance_km_roundtrip: float  # includes Home -> route -> Home if home is set
+    stores: List[Store]  # in the same order as store_nos_in_order
+
+
+@dataclass
+class ScheduleResult:
+    feasible: bool
+    reason: Optional[str]
+    days: List[DayPlan]
+    total_distance_km_roundtrip: float
+    unscheduled_important: List[int]
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two lat/lng points in kilometers."""
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = phi2 - phi1
+    dl = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dl / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return EARTH_RADIUS_KM * c
+
+
+def build_indexes(
+    store_locations: List["Location"],
+) -> Tuple[Dict[int, Store], List[int]]:
+    """Map store no -> Store and return ordered list of store nos."""
+    loc_by_no: Dict[int, Store] = {}
+    for s in store_locations:
+        loc_by_no[s.no] = Store(no=s.no, lat=s.lat, lng=s.lng)
+    store_nos = list(loc_by_no.keys())
+    return loc_by_no, store_nos
+
+
+def precompute_distances(
+    loc_by_no: dict[int, Store],
+    max_pair_km: float,
+    home: Location | None = None,
+) -> tuple[dict[tuple[int, int], float], dict[int, set[int]], dict[int, float]]:
+    """Precompute pairwise distances, <= threshold adjacency, and home distances."""
+    store_nos = list(loc_by_no.keys())
+    pair_dist: Dict[Tuple[int, int], float] = {}
+    neighbors: Dict[int, Set[int]] = {no: set() for no in store_nos}
+    n = len(store_nos)
+
+    for i in range(n):
+        a = store_nos[i]
+        for j in range(i + 1, n):
+            b = store_nos[j]
+            da = haversine_km(
+                loc_by_no[a].lat, loc_by_no[a].lng, loc_by_no[b].lat, loc_by_no[b].lng
+            )
+            pair_dist[(a, b)] = da
+            pair_dist[(b, a)] = da
+            if da <= max_pair_km + 1e-9:
+                neighbors[a].add(b)
+                neighbors[b].add(a)
+
+    home_dist: Dict[int, float] = {}
+    if home is not None:
+        for no, st in loc_by_no.items():
+            home_dist[no] = haversine_km(home.lat, home.lng, st.lat, st.lng)
+
+    return pair_dist, neighbors, home_dist
+
+
+def dist_pair(a: int, b: int, pair_dist: Dict[Tuple[int, int], float]) -> float:
+    return pair_dist[(a, b)]
+
+
+def group_is_clique(
+    group: Iterable[int],
+    max_pair_km: float,
+    pair_dist: Dict[Tuple[int, int], float],
+) -> bool:
+    ids = list(group)
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            if dist_pair(ids[i], ids[j], pair_dist) > max_pair_km + 1e-9:
+                return False
+    return True
+
+
+def can_add_to_group(
+    group: Iterable[int],
+    candidate: int,
+    max_pair_km: float,
+    pair_dist: Dict[Tuple[int, int], float],
+) -> bool:
+    for g in group:
+        if dist_pair(g, candidate, pair_dist) > max_pair_km + 1e-9:
+            return False
+    return True
+
+
+def best_route_for_group(
+    group: List[int],
+    pair_dist: Dict[Tuple[int, int], float],
+    home_dist: Optional[Dict[int, float]] = None,
+    include_home_roundtrip: bool = True,
+) -> Tuple[List[int], float]:
+    """
+    Compute minimal route order and its distance for a group of size 2 or 3.
+    If home_dist is provided and include_home_roundtrip is True, the cost is:
+      Home -> s1 -> ... -> sk -> Home
+    Otherwise it's just the path length within the group.
+    """
+    assert 2 <= len(group) <= 3, "This solver supports length 2 or 3 groups."
+
+    best_order: List[int] = []
+    best_cost = float("inf")
+
+    for perm in itertools.permutations(group):
+        cost = 0.0
+        if home_dist is not None and include_home_roundtrip:
+            cost += home_dist[perm[0]]
+        for i in range(len(perm) - 1):
+            cost += dist_pair(perm[i], perm[i + 1], pair_dist)
+        if home_dist is not None and include_home_roundtrip:
+            cost += home_dist[perm[-1]]
+
+        if cost < best_cost:
+            best_cost = cost
+            best_order = list(perm)
+
+    return best_order, best_cost
+
+
+def incremental_cost_if_added(
+    group: List[int],
+    candidate: int,
+    pair_dist: Dict[Tuple[int, int], float],
+    home_dist: Optional[Dict[int, float]] = None,
+) -> float:
+    """Delta cost of adding candidate to group (recomputes best route)."""
+    if len(group) >= 3:
+        return float("inf")
+    if not can_add_to_group(group, candidate, float("inf"), pair_dist):
+        return float("inf")
+    if len(group) == 0:
+        return 0.0
+    # compute before and after with roundtrip if home provided
+    _, before = best_route_for_group(
+        group,
+        pair_dist,
+        home_dist=home_dist,
+        include_home_roundtrip=(home_dist is not None),
+    )
+    new_group = group + [candidate]
+    # If group had 1 store, after must be computed only when size >= 2
+    if len(new_group) < 2:
+        return float("inf")
+    _, after = best_route_for_group(
+        new_group,
+        pair_dist,
+        home_dist=home_dist,
+        include_home_roundtrip=(home_dist is not None),
+    )
+    return after - before
+
+
+def pick_best_neighbor_for_group(
+    group: List[int],
+    candidates: Iterable[int],
+    pair_dist: Dict[Tuple[int, int], float],
+    max_pair_km: float,
+    home_dist: Optional[Dict[int, float]] = None,
+) -> Optional[int]:
+    """Pick neighbor that keeps clique property and minimally increases route."""
+    best_id: Optional[int] = None
+    best_delta = float("inf")
+
+    for c in candidates:
+        if not can_add_to_group(group, c, max_pair_km, pair_dist):
+            continue
+        delta = incremental_cost_if_added(group, c, pair_dist, home_dist)
+        if delta < best_delta:
+            best_delta = delta
+            best_id = c
+    return best_id
+
+
+def pick_best_pair_from_pool(
+    pool: Iterable[int],
+    neighbors: Dict[int, Set[int]],
+    pair_dist: Dict[Tuple[int, int], float],
+    home_dist: Optional[Dict[int, float]] = None,
+) -> Optional[Tuple[int, int, float, List[int]]]:
+    """Pick best pair (a,b) from pool minimizing roundtrip cost."""
+    best: Optional[Tuple[int, int, float, List[int]]] = None
+    pool_list = list(pool)
+    seen: Set[Tuple[int, int]] = set()
+
+    for a in pool_list:
+        for b in neighbors[a]:
+            if b not in pool_list or a == b:
+                continue
+            key = (min(a, b), max(a, b))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            if home_dist is not None:
+                order, cost = best_route_for_group(
+                    [a, b],
+                    pair_dist,
+                    home_dist=home_dist,
+                    include_home_roundtrip=True,
+                )
+            else:
+                order, cost = best_route_for_group(
+                    [a, b], pair_dist, home_dist=None, include_home_roundtrip=False
+                )
+
+            if best is None or cost < best[2]:
+                best = (a, b, cost, order)
+    return best
+
+
+def make_weekly_schedule(
+    home: Optional["Location"],
+    important_locations: List["Location"],
+    store_locations: List["Location"],
+    *,
+    max_pair_km: float = 20.0,
+) -> ScheduleResult:
+    """
+    Build a 5-day schedule under these rules:
+      - Weekdays only (5 days).
+      - Every important store MUST be visited.
+      - Minimize daily and total travel distance (heuristic).
+      - Stores visited within a day must be within 20 km of each other
+        (pairwise) — enforced as a clique constraint.
+      - At least 2 stores per day (so >= 10 per week).
+      - If < 10 important stores, fill remaining with nearby stores.
+      - If > 10 important stores, some days will have 3 stores (<= 3/day),
+        still respecting the 20 km pairwise limit.
+      - If home is set, prioritize fillers near home (and near group).
+
+    Returns a ScheduleResult with feasibility, days, and distances.
+
+    Assumptions/Notes:
+      - A day will have 2 or 3 stores. If there are > 15 important stores,
+        it's impossible (5 days * 3/day max).
+      - If an important store has no other store within 20 km, it's impossible
+        because each day must have >= 2 stores and all within 20 km.
+      - Route distance assumes starting and ending at home if provided.
+        Otherwise, we minimize intra-day path length.
+    """
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+    # Index stores and important set
+    loc_by_no, all_nos = build_indexes(store_locations)
+    if len(all_nos) < 10:
+        return ScheduleResult(
+            feasible=False,
+            reason="Need at least 10 store locations to visit 2 per day.",
+            days=[],
+            total_distance_km_roundtrip=0.0,
+            unscheduled_important=[],
+        )
+
+    important_nos_input = [s.no for s in important_locations]
+    important_nos = [no for no in important_nos_input if no in loc_by_no]
+
+    missing = [no for no in important_nos_input if no not in loc_by_no]
+    if missing:
+        return ScheduleResult(
+            feasible=False,
+            reason=(
+                "Some important stores are not present in storeLocations: "
+                + ", ".join(map(str, missing))
+            ),
+            days=[],
+            total_distance_km_roundtrip=0.0,
+            unscheduled_important=missing,
+        )
+
+    K = len(important_nos)
+    if K > 15:
+        return ScheduleResult(
+            feasible=False,
+            reason=(
+                "More than 15 important stores cannot be scheduled with 5 days "
+                "(max 3 per day) under 20 km pairwise constraint."
+            ),
+            days=[],
+            total_distance_km_roundtrip=0.0,
+            unscheduled_important=sorted(important_nos),
+        )
+
+    # Precompute distances and adjacency
+    pair_dist, neighbors, home_dist = precompute_distances(loc_by_no, max_pair_km, home)
+
+    # Early feasibility: each important must have at least one neighbor
+    # within 20 km to form a 2-store day.
+    for imp in important_nos:
+        # Allow pairing with any other store (important or not)
+        if not neighbors[imp]:
+            return ScheduleResult(
+                feasible=False,
+                reason=(
+                    f"Important store {imp} has no other store within "
+                    f"{max_pair_km} km; cannot make a 2-store day."
+                ),
+                days=[],
+                total_distance_km_roundtrip=0.0,
+                unscheduled_important=[imp],
+            )
+
+    # Greedy grouping: place important stores into up to 5 cliques,
+    # each of size <= 3, trying to keep distances low and respect the
+    # 20 km pairwise limit.
+    groups: List[List[int]] = []  # 5 groups to become days
+    used: Set[int] = set()
+
+    # Sort important by (degree among important, then among all) descending
+    imp_set = set(important_nos)
+    imp_degrees = {
+        no: (len(neighbors[no] & imp_set), len(neighbors[no])) for no in imp_set
+    }
+    important_sorted = sorted(
+        important_nos,
+        key=lambda no: (imp_degrees[no][0], imp_degrees[no][1]),
+        reverse=True,
+    )
+
+    def group_incremental_cost(g: List[int], cand: int) -> float:
+        return incremental_cost_if_added(g, cand, pair_dist, home_dist)
+
+    # Place important stores
+    for s in important_sorted:
+        if s in used:
+            continue
+
+        # Try to add to existing group (must stay a clique and size <= 3)
+        best_gid = None
+        best_delta = float("inf")
+        for gi, g in enumerate(groups):
+            if len(g) >= 3:
+                continue
+            if not can_add_to_group(g, s, max_pair_km, pair_dist):
+                continue
+            delta = group_incremental_cost(g, s)
+            if delta < best_delta:
+                best_delta = delta
+                best_gid = gi
+
+        if best_gid is not None:
+            groups[best_gid].append(s)
+            used.add(s)
+        else:
+            # Need a new group
+            if len(groups) >= 5:
+                return ScheduleResult(
+                    feasible=False,
+                    reason=(
+                        "Need more than 5 groups to place all important stores "
+                        "under 20 km pairwise constraint."
+                    ),
+                    days=[],
+                    total_distance_km_roundtrip=0.0,
+                    unscheduled_important=sorted(list(imp_set - used)),
+                )
+            groups.append([s])
+            used.add(s)
+
+    # Ensure we have exactly 5 groups (some might be empty for now)
+    while len(groups) < 5:
+        groups.append([])
+
+    # Fill each group to at least 2 stores using nearby non-important stores
+    non_important_pool: Set[int] = set(all_nos) - set(important_nos) - used
+
+    def pick_best_filler_for_group(g: List[int]) -> Optional[int]:
+        # Candidates must be neighbors to all in g (to keep clique)
+        if not g:
+            return None
+        common = set(all_nos)
+        for x in g:
+            common &= neighbors[x]
+        # Only consider unused non-important
+        candidates = [c for c in common if c in non_important_pool]
+        # Prefer closer to home if available
+        return pick_best_neighbor_for_group(
+            g, candidates, pair_dist, max_pair_km, home_dist
+        )
+
+    # First pass: make singletons into pairs
+    for gi, g in enumerate(groups):
+        if len(g) == 1:
+            filler = pick_best_filler_for_group(g)
+            if filler is None:
+                # Try pairing singleton important with another important not used?
+                # This shouldn't happen; all important are already used.
+                # As fallback, try any neighbor (even if currently used in other
+                # group) is not allowed. So infeasible.
+                return ScheduleResult(
+                    feasible=False,
+                    reason=(
+                        f"Group {gi + 1} with important store {g[0]} cannot find "
+                        f"a second store within {max_pair_km} km."
+                    ),
+                    days=[],
+                    total_distance_km_roundtrip=0.0,
+                    unscheduled_important=[],
+                )
+            g.append(filler)
+            used.add(filler)
+            non_important_pool.discard(filler)
+
+    # Second pass: fill empty groups with two-store pairs (filler-only days)
+    for gi, g in enumerate(groups):
+        if len(g) == 0:
+            # Pick best pair from remaining pool (prioritize near home)
+            best_pair = pick_best_pair_from_pool(
+                pool=non_important_pool,
+                neighbors=neighbors,
+                pair_dist=pair_dist,
+                home_dist=home_dist,
+            )
+            if best_pair is None:
+                # Try forming a triple from pool (rarely needed, but could help)
+                # We need a 2-store minimum; if pair not possible, triple also
+                # requires pairwise <= 20 km. We'll attempt, and if it exists,
+                # we can still use it as a valid day of 3 stores.
+                triple = None
+                pool_list = list(non_important_pool)
+                found = False
+                for a in pool_list:
+                    for b in neighbors[a]:
+                        if b not in non_important_pool or b == a:
+                            continue
+                        for c in neighbors[a] & neighbors[b]:
+                            if c in non_important_pool and c not in (a, b):
+                                if group_is_clique([a, b, c], max_pair_km, pair_dist):
+                                    triple = [a, b, c]
+                                    found = True
+                                    break
+                        if found:
+                            break
+                    if found:
+                        break
+                if triple is None:
+                    return ScheduleResult(
+                        feasible=False,
+                        reason=(
+                            "Cannot form 5 days with at least 2 stores per day "
+                            f"under {max_pair_km} km constraint from remaining stores."
+                        ),
+                        days=[],
+                        total_distance_km_roundtrip=0.0,
+                        unscheduled_important=[],
+                    )
+                # Use the triple
+                groups[gi] = triple
+                for t in triple:
+                    used.add(t)
+                    non_important_pool.discard(t)
+            else:
+                a, b, _, order = best_pair
+                groups[gi] = order  # already optimal order for pair
+                used.add(a)
+                used.add(b)
+                non_important_pool.discard(a)
+                non_important_pool.discard(b)
+
+    # If there are > 10 important stores, we must fit them (some days of 3).
+    # At this point, all important are placed; some groups may have room for
+    # a 3rd store. If K > 10 and we somehow have fewer than K scheduled, it
+    # would already have failed earlier, but we keep a step to add a 3rd filler
+    # to some groups when capacity allows and it helps reduce total distance.
+    # Also, when K < 10 we already have exactly 5 groups with at least 2 stores.
+
+    # Try to add one extra filler to groups that have only 2 stores if:
+    # - There are still days needing a 3rd store because K > 10.
+    num_threes_needed = max(0, K - 10)
+    current_threes = sum(1 for g in groups if len(g) == 3)
+    to_promote = max(0, num_threes_needed - current_threes)
+
+    if to_promote > 0:
+        # Promote groups (with important focus first) by adding the best filler
+        # that keeps the clique constraint and minimizes incremental cost.
+        # Prioritize groups containing important stores.
+        groups_order = sorted(
+            range(len(groups)),
+            key=lambda gi: (
+                -len(set(groups[gi]) & imp_set),  # more important in group
+                len(groups[gi]),  # prefer groups of size 2
+            ),
+        )
+
+        for gi in groups_order:
+            if to_promote <= 0:
+                break
+            g = groups[gi]
+            if len(g) >= 3:
+                continue
+            # candidates: neighbors common to all in g, from non_important_pool
+            common = set(all_nos)
+            for x in g:
+                common &= neighbors[x]
+            candidates = [c for c in common if c in non_important_pool]
+            cand = pick_best_neighbor_for_group(
+                g, candidates, pair_dist, max_pair_km, home_dist
+            )
+            if cand is not None:
+                g.append(cand)
+                used.add(cand)
+                non_important_pool.discard(cand)
+                to_promote -= 1
+
+        if to_promote > 0:
+            # Could not promote enough groups to size 3 under the constraint.
+            return ScheduleResult(
+                feasible=False,
+                reason=(
+                    "Not enough 3-store cliques to fit all important stores "
+                    f"under {max_pair_km} km limit."
+                ),
+                days=[],
+                total_distance_km_roundtrip=0.0,
+                unscheduled_important=[],
+            )
+
+    # Now compute the best route for each group (order and distance).
+    day_plans: List[DayPlan] = []
+    total_distance = 0.0
+
+    for di, g in enumerate(groups):
+        assert 2 <= len(g) <= 3, "Each day must have 2 or 3 stores."
+        order, dist_km = best_route_for_group(
+            g,
+            pair_dist,
+            home_dist=home_dist if home is not None else None,
+            include_home_roundtrip=(home is not None),
+        )
+        total_distance += dist_km
+        day_plans.append(
+            DayPlan(
+                name=day_names[di],
+                store_nos_in_order=order,
+                distance_km_roundtrip=round(dist_km, 2),
+                stores=[loc_by_no[x] for x in order],
+            )
+        )
+
+    # Ensure weekly minimum total count (>= 10) is satisfied
+    total_count = sum(len(g) for g in groups)
+    if total_count < 10:
+        return ScheduleResult(
+            feasible=False,
+            reason=(
+                "Weekly total stores scheduled is less than 10, which violates "
+                "the 'at least 2 per day' rule."
+            ),
+            days=[],
+            total_distance_km_roundtrip=0.0,
+            unscheduled_important=[],
+        )
+
+    return ScheduleResult(
+        feasible=True,
+        reason=None,
+        days=day_plans,
+        total_distance_km_roundtrip=round(total_distance, 2),
+        unscheduled_important=[],
+    )
+
+
+# --------------------------
+# Example usage (pseudo-code)
+# --------------------------
+#
+# home: Location | None
+# importantLocation: list[Location]
+# storeLocations: list[Location]
+#
+# result = make_weekly_schedule(home, importantLocation, storeLocations)
+# if not result.feasible:
+#     print("Failed:", result.reason)
+# else:
+#     print("Total distance (km):", result.total_distance_km_roundtrip)
+#     for day in result.days:
+#         print(day.name, day.store_nos_in_order, day.distance_km_roundtrip)
+#         # day.stores has lat/lng in visiting order
