@@ -293,3 +293,13 @@ button:hover {
   translate: -50%;
   rotate: 45deg;
 }
+
+.generate-button {
+  background-color: var(--green);
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+}
+
+.generate-button:hover {
+  cursor: pointer;
+}
