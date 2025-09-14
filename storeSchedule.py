@@ -7,6 +7,7 @@ import json
 import os
 import itertools
 from copy import deepcopy
+from collections import deque
 
 DAYS_IN_WEEK = 5
 
@@ -129,16 +130,59 @@ def placeholder_distances() -> tuple[
     return pairwise_distances, distances_from_home
 
 
+def is_subtree_of(subtree: list[list[int]], supertree: list[list[int]]) -> bool:
+    # using union find technique ish
+    # {key: parent}
+    adjacency: dict[int, int] = {}
+
+    for day in supertree:
+        # each day is an island
+        representative = -1
+
+        for store in day:
+            if representative == -1:
+                representative = store
+                adjacency[store] = -1
+            else:
+                adjacency[store] = representative
+
+    for day in subtree:
+        representative = -1
+
+        for store in day:
+            parent = store
+
+            if parent not in adjacency:
+                return False
+
+            while adjacency[parent] != -1:
+                parent = adjacency[parent]
+
+            if representative == -1:
+                representative = parent
+            elif parent != representative:
+                return False
+
+    return True
+
+
 def make_schedule(
     home: Location, locations: list[Location], important_locations: list[int]
 ) -> list[tuple[list[list[int]], float]]:
     # pairwise_distances, distances_from_home = compute_distances(home, locations)
     pairwise_distances, distances_from_home = placeholder_distances()
 
-    candidate_schedules: list[list[list[int]]] = [[]]
+    candidate_schedules: deque[list[list[int]]] = deque()
     schedules: list[tuple[list[list[int]], float]] = []
+    already_seen: set[str] = set()
 
-    pairs: set[tuple[int, ...]] = set()
+    def to_str(candidate: list[list[int]]) -> str:
+        return str(
+            sorted(
+                [sorted(day) for day in candidate if len(day) > 0],
+                key=lambda x: x[0],
+            )
+        )
 
     def compute_closesest(
         candidate: list[list[int]], ordered_distances: OrderedDict[int, float]
@@ -161,12 +205,6 @@ def make_schedule(
     def add_candidate(candidate: list[list[int]], i: int, closest_from_last_store: int):
         another_candidate = deepcopy(candidate)
 
-        day_copy = deepcopy(another_candidate[i])
-        day_copy.append(closest_from_last_store)
-        day_copy.sort()
-        if tuple(day_copy) in pairs:
-            return
-
         for dayy in another_candidate:
             if closest_from_last_store in dayy:
                 dayy.remove(closest_from_last_store)
@@ -174,12 +212,20 @@ def make_schedule(
 
         another_candidate[i].append(closest_from_last_store)
 
-        pairs.add(tuple(day_copy))
+        another_candidate_str = to_str(another_candidate)
+        if another_candidate_str in already_seen:
+            return
 
         candidate_schedules.append(another_candidate)
 
+    candidate_schedules.append([])
+
     while len(candidate_schedules) > 0:
-        candidate = candidate_schedules.pop()
+        candidate = candidate_schedules.popleft()
+
+        if to_str(candidate) in already_seen:
+            continue
+
         is_candidate_full = False
         i = 0
 
@@ -188,6 +234,7 @@ def make_schedule(
                 candidate.append([])
 
             day = candidate[i]
+            already_seen.add(to_str(candidate))
 
             if len(day) == 0:
                 if len(important_locations) > 0:
@@ -207,10 +254,16 @@ def make_schedule(
 
                 day.append(closest_from_last_store)
 
-            pairs.add(tuple(day))
-            is_candidate_full = all(len(day) >= 2 for day in candidate)
+            is_candidate_full = len(candidate) == DAYS_IN_WEEK and all(
+                len(day) >= 2 for day in candidate
+            )
 
             i = (i + 1) % DAYS_IN_WEEK
+
+        if to_str(candidate) in already_seen:
+            continue
+        else:
+            already_seen.add(to_str(candidate))
 
         # penalize for long pairwise distances
         # not very important for distance from home
@@ -224,8 +277,9 @@ def make_schedule(
                 + distances_from_home[day[0]] / 2
                 + distances_from_home[day[-1]] / 2
             )
+            day.sort()
 
-        schedules.append((candidate, weight))
+        schedules.append((sorted(candidate, key=lambda x: x[0]), weight))
 
     return sorted(schedules, key=lambda x: x[1])
 
@@ -238,8 +292,14 @@ def main():
 
     schedules = make_schedule(home, locations, important_locations)
 
-    print("\n".join(map(json.dumps, schedules)))
+    print(len(schedules))
+    print("\n".join(map(json.dumps, schedules[:10])))
+
+    # optimal = [[10, 9], [11, 20], [19, 4], [2, 1]]
 
 
 if __name__ == "__main__":
+    # tree = [[1, 2], [3, 8], [4, 9]]
+    # supertree = [[1, 2], [3, 4, 5, 6, 7], [8, 9, 10]]
+    # print(is_subtree_of(tree, supertree))
     main()
