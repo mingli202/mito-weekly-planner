@@ -212,18 +212,20 @@ def make_schedule(
 
             i = (i + 1) % DAYS_IN_WEEK
 
-        total_distance = 0
+        # penalize for long pairwise distances
+        # not very important for distance from home
+        weight = 0
         for day in candidate:
-            total_distance += (
+            weight += (
                 sum(
-                    pow(pairwise_distances[day[i]][day[i + 1]], 2)
+                    pow(pairwise_distances[day[i]][day[i + 1]], 3)
                     for i in range(len(day) - 1)
                 )
-                + distances_from_home[day[0]]
-                + distances_from_home[day[-1]]
+                + distances_from_home[day[0]] / 2
+                + distances_from_home[day[-1]] / 2
             )
 
-        schedules.append((candidate, total_distance))
+        schedules.append((candidate, weight))
 
     return sorted(schedules, key=lambda x: x[1])
 
