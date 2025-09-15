@@ -24,13 +24,13 @@ body.addEventListener("htmx:beforeSwap", async (e) => {
         case "setCenter": {
           e.detail.shouldSwap = false;
           map.setCenter({
-            lat: data.location.latitude,
-            lng: data.location.longitude,
+            lat: data.location.lat,
+            lng: data.location.lng,
           });
         }
       }
     }
-  } catch (e) {}
+  } catch (_e) {}
 });
 
 async function addMarker(location) {
