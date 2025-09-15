@@ -22,3 +22,10 @@ class StoreInfo(BaseModel):
     addr: str
     city: str
     postalCode: str
+
+
+class Location(BaseModel):
+    no: int
+    lat: float
+    lng: float
+    index: int
