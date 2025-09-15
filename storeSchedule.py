@@ -31,16 +31,16 @@ def point_distance(p1: tuple[float, float], p2: tuple[float, float]) -> float:
 
 def compute_distances(
     home: Location, locations: list[Location]
-) -> tuple[dict[int, OrderedDict[int, float]], OrderedDict[int, float]]:
-    pairwise_distances: dict[int, OrderedDict[int, float]] = dict()
-    distances_from_home: OrderedDict[int, float] = OrderedDict()
+) -> tuple[dict[str, OrderedDict[str, float]], OrderedDict[str, float]]:
+    pairwise_distances: dict[str, OrderedDict[str, float]] = dict()
+    distances_from_home: OrderedDict[str, float] = OrderedDict()
 
     if os.path.exists("./public/static/data/pairwise_distances.json"):
         with open("./public/static/data/pairwise_distances.json") as file:
             pairwise_distances = json.load(file)
 
-        for i, l1 in enumerate(locations[:-1]):
-            distances_from_home[l1.no] = haversine_km(l1, home)
+        for i, l1 in enumerate(locations):
+            distances_from_home[str(l1.no)] = haversine_km(l1, home)
     else:
         for i, l1 in enumerate(locations):
             for j, l2 in enumerate(locations[i + 1 :]):
@@ -49,22 +49,22 @@ def compute_distances(
                 dist = haversine_km(l1, l2)
 
                 if l1.no not in pairwise_distances:
-                    pairwise_distances[l1.no] = OrderedDict()
+                    pairwise_distances[str(l1.no)] = OrderedDict()
 
                 if l2.no not in pairwise_distances:
-                    pairwise_distances[l2.no] = OrderedDict()
+                    pairwise_distances[str(l2.no)] = OrderedDict()
 
-                pairwise_distances[l1.no][l2.no] = dist
-                pairwise_distances[l2.no][l1.no] = dist
+                pairwise_distances[str(l1.no)][str(l2.no)] = dist
+                pairwise_distances[str(l2.no)][str(l1.no)] = dist
 
-            distances_from_home[l1.no] = haversine_km(l1, home)
+            distances_from_home[str(l1.no)] = haversine_km(l1, home)
 
-            pairwise_distances[l1.no] = OrderedDict(
-                sorted(pairwise_distances[l1.no].items(), key=lambda x: x[1])
+            pairwise_distances[str(l1.no)] = OrderedDict(
+                sorted(pairwise_distances[str(l1.no)].items(), key=lambda x: x[1])
             )
 
         with open("./public/static/data/pairwise_distances.json", "w") as file:
-            json.dump(pairwise_distances, file, indent=2)
+            json.dump(pairwise_distances, file, indent=2, ensure_ascii=True)
 
     distances_from_home = OrderedDict(
         sorted(distances_from_home.items(), key=lambda x: x[1])
@@ -74,7 +74,7 @@ def compute_distances(
 
 
 def placeholder_distances() -> tuple[
-    dict[int, OrderedDict[int, float]], OrderedDict[int, float]
+    dict[str, OrderedDict[str, float]], OrderedDict[str, float]
 ]:
     grid = [
         [1, 0, 0, 0, 0, 0, 0, 0, 0, 12],
@@ -90,8 +90,8 @@ def placeholder_distances() -> tuple[
     ]
     home = (3, 2)
 
-    pairwise_distances: dict[int, OrderedDict[int, float]] = {}
-    distances_from_home: OrderedDict[int, float] = OrderedDict()
+    pairwise_distances: dict[str, OrderedDict[str, float]] = {}
+    distances_from_home: OrderedDict[str, float] = OrderedDict()
 
     points: dict[int, tuple[int, int]] = {}
     for i, row in enumerate(grid):
@@ -106,77 +106,47 @@ def placeholder_distances() -> tuple[
                 (p_cur[1] - p_other[1]) ** 2 + (p_cur[0] - p_other[0]) ** 2
             )
 
-            if cur not in pairwise_distances:
-                pairwise_distances[cur] = OrderedDict()
+            if str(cur) not in pairwise_distances:
+                pairwise_distances[str(cur)] = OrderedDict()
 
-            if other not in pairwise_distances:
-                pairwise_distances[other] = OrderedDict()
+            if str(other) not in pairwise_distances:
+                pairwise_distances[str(other)] = OrderedDict()
 
-            pairwise_distances[cur][other] = dist
-            pairwise_distances[other][cur] = dist
+            pairwise_distances[str(cur)][str(other)] = dist
+            pairwise_distances[str(other)][str(cur)] = dist
 
-        pairwise_distances[cur] = OrderedDict(
-            sorted(pairwise_distances[cur].items(), key=lambda x: x[1])
+        pairwise_distances[str(cur)] = OrderedDict(
+            sorted(pairwise_distances[str(cur)].items(), key=lambda x: int(x[1]))
         )
 
-        distances_from_home[cur] = math.sqrt(
+        distances_from_home[str(cur)] = math.sqrt(
             (home[1] - p_cur[1]) ** 2 + (home[0] - p_cur[0]) ** 2
         )
 
     distances_from_home = OrderedDict(
-        sorted(distances_from_home.items(), key=lambda x: x[1])
+        sorted(distances_from_home.items(), key=lambda x: int(x[1]))
     )
 
     return pairwise_distances, distances_from_home
 
 
-def is_subtree_of(subtree: list[list[int]], supertree: list[list[int]]) -> bool:
-    # using union find technique ish
-    # {key: parent}
-    adjacency: dict[int, int] = {}
-
-    for day in supertree:
-        # each day is an island
-        representative = -1
-
-        for store in day:
-            if representative == -1:
-                representative = store
-                adjacency[store] = -1
-            else:
-                adjacency[store] = representative
-
-    for day in subtree:
-        representative = -1
-
-        for store in day:
-            parent = store
-
-            if parent not in adjacency:
-                return False
-
-            while adjacency[parent] != -1:
-                parent = adjacency[parent]
-
-            if representative == -1:
-                representative = parent
-            elif parent != representative:
-                return False
-
-    return True
-
-
 def make_schedule(
-    home: Location, locations: list[Location], important_locations: list[int]
-) -> list[tuple[list[list[int]], float]]:
-    # pairwise_distances, distances_from_home = compute_distances(home, locations)
-    pairwise_distances, distances_from_home = placeholder_distances()
+    home: Location,
+    locations: list[Location],
+    important_locations: list[str],
+    test: bool = False,
+) -> list[tuple[list[list[str]], float, float]]:
+    if test:
+        pairwise_distances, distances_from_home = placeholder_distances()
+        important_locations = list(map(str, [1, 2]))
+    else:
+        pairwise_distances, distances_from_home = compute_distances(home, locations)
 
-    candidate_schedules: deque[list[list[int]]] = deque()
-    schedules: list[tuple[list[list[int]], float]] = []
+    candidate_schedules: deque[list[list[str]]] = deque()
+    schedules: list[tuple[list[list[str]], float, float]] = []
     already_seen: set[str] = set()
 
-    def to_str(candidate: list[list[int]]) -> str:
+    def to_str(candidate: list[list[str]]) -> str:
         return str(
             sorted(
                 [sorted(day) for day in candidate if len(day) > 0],
@@ -185,8 +155,8 @@ def make_schedule(
         )
 
     def compute_closesest(
-        candidate: list[list[int]], ordered_distances: OrderedDict[int, float]
-    ) -> int:
+        candidate: list[list[str]], ordered_distances: OrderedDict[str, float]
+    ) -> str:
         closest_stores = list(ordered_distances.keys())
 
         k = 0
@@ -202,7 +172,7 @@ def make_schedule(
 
         return closest_from_last_store
 
-    def add_candidate(candidate: list[list[int]], i: int, closest_from_last_store: int):
+    def add_candidate(candidate: list[list[str]], i: int, closest_from_last_store: str):
         another_candidate = deepcopy(candidate)
 
         for dayy in another_candidate:
@@ -249,7 +219,7 @@ def make_schedule(
                 last_store = day[-1]
 
                 closest_from_last_store = compute_closesest(
-                    candidate, pairwise_distances[last_store]
+                    candidate, pairwise_distances[str(last_store)]
                 )
 
                 day.append(closest_from_last_store)
@@ -268,6 +238,7 @@ def make_schedule(
         # penalize for long pairwise distances
         # not very important for distance from home
         weight = 0
+        total_distance = 0
         for day in candidate:
             weight += (
                 sum(
@@ -279,27 +250,30 @@ def make_schedule(
             )
             day.sort()
 
-        schedules.append((sorted(candidate, key=lambda x: x[0]), weight))
+            total_distance += (
+                sum(pairwise_distances[day[i]][day[i + 1]] for i in range(len(day) - 1))
+                + distances_from_home[day[0]]
+                + distances_from_home[day[-1]]
+            )
 
-    return sorted(schedules, key=lambda x: x[1])
+        schedules.append(
+            (sorted(candidate, key=lambda x: x[0]), total_distance, weight)
+        )
+
+    return sorted(schedules, key=lambda x: x[2])
 
 
 def main():
     locations = load_locations()
 
     home = Location(no=0, lat=45.461915521005885, lng=-73.87317833852978, index=0)
-    important_locations = [1, 2]
+    important_locations = list(map(str, [110, 8793, 8293]))
 
     schedules = make_schedule(home, locations, important_locations)
 
     print(len(schedules))
     print("\n".join(map(json.dumps, schedules[:10])))
 
-    # optimal = [[10, 9], [11, 20], [19, 4], [2, 1]]
-
 
 if __name__ == "__main__":
-    # tree = [[1, 2], [3, 8], [4, 9]]
-    # supertree = [[1, 2], [3, 4, 5, 6, 7], [8, 9, 10]]
-    # print(is_subtree_of(tree, supertree))
     main()
