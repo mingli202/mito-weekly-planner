@@ -7,7 +7,9 @@ import json
 import requests
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from models import Req, Res, SetAddrModel, StoreInfo
+from data import load_locations
+from models import Req, Res, SetAddrModel, StoreInfo, Location
+from storeSchedule import make_schedule
 
 StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
 
@@ -26,12 +28,19 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="public/static"), name="static")
 
-starting_address = ""
 data = pd.read_csv("public/static/data/stores_location.csv")
 
-locations = []
-with open("public/static/data/locations-fixed.json", "r") as file:
-    locations = json.loads(file.read())
+middle_of_montreal = Location(
+    no=0, lat=45.51694470739976, lng=-73.72324462099256, index=0
+)
+
+
+class State:
+    home: Location = middle_of_montreal
+
+
+state = State()
+locations: list[Location] = load_locations()
 
 
 @app.get("/")
@@ -256,7 +265,6 @@ def search_store(store: str | None) -> pd.DataFrame:
 @app.post("/api/setStartingAddress")
 async def setStartingAddress(req: SetAddrModel) -> Res:
     p = req.p
-    starting_address = p
 
     placeRes = requests.get(
         f"https://places.googleapis.com/v1/places/{req.placeId}",
@@ -265,6 +273,11 @@ async def setStartingAddress(req: SetAddrModel) -> Res:
             "X-Goog-FieldMask": "location",
             "Content-Type": "application/json",
         },
+    )
+
+    location = placeRes.json()["location"]
+    state.home = Location(
+        no=0, index=-1, lat=location["latitude"], lng=location["longitude"]
     )
 
     return Res(
@@ -284,12 +297,14 @@ async def setStartingAddress(req: SetAddrModel) -> Res:
           <span>{p}</span>
         </div>
     """,
-        data={"action": "setStartingAddress", "location": placeRes.json()["location"]},
+        data={"action": "setStartingAddress", "location": location},
     )
 
 
 @app.get("/api/removeStartingAddress")
 async def removeStartingAddress() -> Res:
+    state.home = middle_of_montreal
+
     return Res(
         html="""
       <div id="res-container">
@@ -346,6 +361,9 @@ async def test() -> Res:
 
 @app.post("/api/store/location")
 async def location(req: Req) -> Res:
+    if not req.q:
+        return Res()
+
     no = req.q
 
     left = 0
@@ -355,11 +373,47 @@ async def location(req: Req) -> Res:
     while left <= right:
         middle = (left + right) // 2
 
-        if no < locations[middle]["No Mag."]:
+        if int(no) < locations[middle].no:
             right = middle - 1
-        elif no > locations[middle]["No Mag."]:
+        elif int(no) > locations[middle].no:
             left = middle + 1
         else:
             break
 
-    return Res(data={"action": req.action, "location": locations[middle]})
+    return Res(data={"action": req.action, "location": locations[middle].model_dump()})
+
+
+@app.post("/api/generate")
+async def generate(store: Store) -> Res:
+    important: list[str] = []
+
+    if store.important:
+        important = list(map(str, json.loads(store.important)))
+    print(important)
+
+    schedules = make_schedule(state.home, locations, important)
+
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
+    html = [
+        f"""
+        <div class="schedule-container">
+          <p>Plan {i + 1} (~{round(schedule[1])}km)</p>
+          <div style="display: flex; gap: 0.5rem">
+            {
+            "".join(
+                f'''
+                <div class="{days[k]} day">
+                    {"".join(f"<p>#{d}</p>" for d in day)}
+                </div>
+            '''
+                for k, day in enumerate(schedule[0])
+            )
+        }
+          </div>
+        </div>
+        """
+        for i, schedule in enumerate(schedules)
+    ]
+
+    return Res(html="".join(html))

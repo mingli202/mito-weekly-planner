@@ -12,6 +12,12 @@
   --highligh-text: white;
   --content-bg: #fff;
   --subtext: #767676;
+
+  --monday: hsl(0 71 69);
+  --tuesday: hsl(33 71 69);
+  --wednesday: hsl(61 71 69);
+  --thursday: hsl(193 71 69);
+  --friday: hsl(242 71 69);
 }
 
 .lato-thin {
@@ -276,7 +282,7 @@ button:hover {
 
 .pin {
   background-color: var(--green);
-  color: white;
+  color: var(--black);
   border-radius: 0.5rem;
   padding: 0.25rem;
   position: relative;
@@ -298,8 +304,46 @@ button:hover {
   background-color: var(--green);
   border-radius: 0.25rem;
   padding: 0.25rem;
+  color: var(--black);
 }
 
 .generate-button:hover {
   cursor: pointer;
+}
+
+.schedule-container {
+  background-color: color(from var(--secondary-text) srgb r g b / 0.8);
+  padding: 0.5rem;
+  border-radius: calc(0.25rem + 0.5rem);
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
+}
+
+.day {
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  width: 100%;
+  height: 100%;
+  color: var(--black);
+}
+
+.monday {
+  background-color: var(--monday);
+}
+
+.tuesday {
+  background-color: var(--tuesday);
+}
+
+.wednesday {
+  background-color: var(--wednesday);
+}
+
+.thursday {
+  background-color: var(--thursday);
+}
+
+.friday {
+  background-color: var(--friday);
 }
