@@ -312,12 +312,29 @@ button:hover {
 }
 
 .schedule-container {
-  background-color: color(from var(--secondary-text) srgb r g b / 0.8);
+  background-color: color(from var(--secondary-text) srgb r g b / 0.5);
   padding: 0.5rem;
   border-radius: calc(0.25rem + 0.5rem);
   display: flex;
   gap: 0.5rem;
   flex-direction: column;
+}
+
+.schedule-container:hover {
+  background-color: color(from var(--secondary-text) srgb r g b / 1);
+  cursor: pointer;
+}
+
+.selected-schedule {
+  background-color: color(from var(--green) srgb r g b / 0.8);
+  padding: 0.5rem;
+  border-radius: calc(0.25rem + 0.5rem);
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: column;
+}
+.selected-schedule:hover {
+  cursor: pointer;
 }
 
 .day {
@@ -346,4 +363,44 @@ button:hover {
 
 .friday {
   background-color: var(--friday);
+}
+
+.monday-pin {
+  border: 4px solid var(--monday);
+  background-color: var(--monday);
+}
+
+.tuesday-pin {
+  border: 4px solid var(--tuesday);
+  background-color: var(--tuesday);
+}
+
+.wednesday-pin {
+  border: 4px solid var(--wednesday);
+  background-color: var(--wednesday);
+}
+
+.thursday-pin {
+  border: 4px solid var(--thursday);
+  background-color: var(--thursday);
+}
+
+.friday-pin {
+  border: 4px solid var(--friday);
+  background-color: var(--friday);
+}
+
+.unselect-button {
+  background-color: var(--primary);
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+}
+
+.unselect-button:hover {
+  cursor: pointer;
+}
+
+.important-pin {
+  background-color: var(--primary);
+  color: var(--primary-text);
 }

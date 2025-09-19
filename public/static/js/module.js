@@ -117,6 +117,10 @@ window.toggleImportant = (id) => {
 
   const visit_element = document.getElementById(`must-visit-${id}`);
 
+  const markerElement = document.querySelector(
+    `gmp-advanced-marker[title="#${id}"]`,
+  );
+
   if (visit_element) {
     visit_element.remove();
     important = important.filter((im) => im != id);
@@ -127,7 +131,11 @@ window.toggleImportant = (id) => {
     }
 
     const marker = storeMarkers[id];
-    marker.content.style.backgroundColor = "#7ad03a";
+    marker.content.classList.remove("important-pin");
+
+    if (markerElement) {
+      markerElement.style.zIndex = "";
+    }
   } else {
     important.push(id);
 
@@ -148,7 +156,11 @@ window.toggleImportant = (id) => {
     must_visit.append(el);
 
     const marker = storeMarkers[id];
-    marker.content.style.backgroundColor = "#720eec";
+    marker.content.classList.add("important-pin");
+
+    if (markerElement) {
+      markerElement.style.zIndex = "10";
+    }
   }
 
   if (important.length == 0) {
@@ -163,3 +175,69 @@ window.toggleImportant = (id) => {
 };
 
 window.getImportant = () => important;
+
+window.showSchedule = (schedule, id) => {
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+
+  for (const pin of document.querySelectorAll("div.pin")) {
+    pin.parentElement.style.visibility = "hidden";
+  }
+
+  const previousSelectedSchedule = document.querySelector(
+    "div.selected-schedule",
+  );
+  if (previousSelectedSchedule) {
+    if (previousSelectedSchedule.id === id) {
+      unselectSchedule();
+      return;
+    }
+
+    previousSelectedSchedule.classList.remove("selected-schedule");
+    previousSelectedSchedule.classList.add("schedule-container");
+  }
+
+  const scheduleContainer = document.getElementById(id);
+  scheduleContainer.classList.remove("schedule-container");
+  scheduleContainer.classList.add("selected-schedule");
+
+  for (let i = 0; i < days.length; i++) {
+    const day = days[i];
+    const daySchedule = schedule[i];
+
+    const previousColoredDayElements = document.querySelectorAll(
+      `div.${day}-pin`,
+    );
+
+    for (const el of previousColoredDayElements) {
+      el.parentElement.style.zIndex = "";
+      el.classList.remove(`${day}-pin`);
+    }
+
+    for (const store of daySchedule) {
+      const pinElement = document.querySelector(
+        `gmp-advanced-marker[title="#${store}"]>div`,
+      );
+
+      if (pinElement) {
+        pinElement.parentElement.style.zIndex = "10";
+        pinElement.parentElement.style.visibility = "visible";
+
+        pinElement.classList.add(`${day}-pin`);
+      }
+    }
+  }
+};
+
+window.unselectSchedule = () => {
+  const scheduleContainer = document.querySelector("div.selected-schedule");
+
+  if (scheduleContainer) {
+    scheduleContainer.classList.remove("selected-schedule");
+    scheduleContainer.classList.add("schedule-container");
+  }
+
+  for (const pin of document.querySelectorAll("div.pin")) {
+    pin.parentElement.style.visibility = "visible";
+    pin.className = "pin";
+  }
+};

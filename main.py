@@ -1,14 +1,16 @@
-import re
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
-import pandas as pd
 import json
+import re
+from datetime import datetime
+
+import pandas as pd
 import requests
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from data import load_locations
-from models import Req, Res, SetAddrModel, StoreInfo, Location
+from models import Location, Req, Res, SetAddrModel, StoreInfo
 from storeSchedule import make_schedule
 
 StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
@@ -389,15 +391,18 @@ async def generate(store: Store) -> Res:
 
     if store.important:
         important = list(map(str, json.loads(store.important)))
-    print(important)
 
     schedules = make_schedule(state.home, locations, important)
 
     days = ["monday", "tuesday", "wednesday", "thursday", "friday"]
 
+    now = datetime.now().timestamp()
+
     html = [
         f"""
-        <div class="schedule-container">
+        <div class="schedule-container" onclick="showSchedule({schedule[0]}, 'schedule-{
+            i
+        }-{now}')" id="schedule-{i}-{now}">
           <p>Plan {i + 1} (~{round(schedule[1])}km)</p>
           <div style="display: flex; gap: 0.5rem">
             {

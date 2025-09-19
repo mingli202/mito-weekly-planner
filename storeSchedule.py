@@ -8,6 +8,7 @@ import os
 import itertools
 from copy import deepcopy
 from collections import deque
+import heapq
 
 DAYS_IN_WEEK = 5
 
@@ -43,15 +44,15 @@ def compute_distances(
             distances_from_home[str(l1.no)] = haversine_km(l1, home)
     else:
         for i, l1 in enumerate(locations):
-            for j, l2 in enumerate(locations[i + 1 :]):
-                if i == j:
+            for l2 in locations[i + 1 :]:
+                if l1.no == l2.no:
                     continue
                 dist = haversine_km(l1, l2)
 
-                if l1.no not in pairwise_distances:
+                if str(l1.no) not in pairwise_distances:
                     pairwise_distances[str(l1.no)] = OrderedDict()
 
-                if l2.no not in pairwise_distances:
+                if str(l2.no) not in pairwise_distances:
                     pairwise_distances[str(l2.no)] = OrderedDict()
 
                 pairwise_distances[str(l1.no)][str(l2.no)] = dist
@@ -130,6 +131,68 @@ def placeholder_distances() -> tuple[
     return pairwise_distances, distances_from_home
 
 
+def compute_permutations(remaining_importants: list[str]) -> list[list[str]]:
+    pool: list[str] = deepcopy(remaining_importants) + [
+        f"-{i + 1}" for i in range(DAYS_IN_WEEK - len(remaining_importants))
+    ]
+    permutations: deque[list[str]] = deque([[i] for i in pool])
+
+    for _ in range(DAYS_IN_WEEK - 1):
+        length = len(permutations)
+
+        for _ in range(length):
+            permutation = permutations.popleft()
+
+            for p in pool:
+                if p in permutation:
+                    continue
+
+                new_permutation = permutation + [p]
+                permutations.append(new_permutation)
+
+    return list(permutations)
+
+
+def convert_permutations(
+    permutations: list[list[str]],
+    first_candidate: list[list[str]],
+    pairwise_distances: dict[str, OrderedDict[str, float]],
+) -> list[list[list[str]]]:
+    seen: set[str] = set()
+    to_return: list[list[list[str]]] = []
+
+    for permutation in permutations:
+        candidate = [
+            day + ([p] if int(p) > 0 else [])
+            for p, day in zip(permutation, first_candidate)
+        ]
+
+        if str(candidate) in seen:
+            continue
+
+        seen.add(str(candidate))
+        to_return.append(candidate)
+
+    def sort_key(x: list[list[str]]) -> float:
+        s = 0
+
+        for day in x:
+            if len(day) < 2:
+                continue
+
+            for i in range(len(day)):
+                for k in range(i + 1, len(day)):
+                    if day[i] == day[k]:
+                        continue
+                    s += pairwise_distances[day[i]][day[k]]
+
+        return s
+
+    to_return.sort(key=sort_key)
+
+    return to_return[:10]
+
+
 def make_schedule(
     home: Location,
     locations: list[Location],
@@ -138,7 +201,7 @@ def make_schedule(
 ) -> list[tuple[list[list[str]], float, float]]:
     if test:
         pairwise_distances, distances_from_home = placeholder_distances()
-        important_locations = list(map(str, [1, 2]))
+        important_locations = list(map(str, [1, 2, 3, 4, 5, 6, 7]))
     else:
         pairwise_distances, distances_from_home = compute_distances(home, locations)
 
@@ -188,7 +251,22 @@ def make_schedule(
 
         candidate_schedules.append(another_candidate)
 
-    candidate_schedules.append([])
+    first_candidate: list[list[str]] = []
+    for i in range(DAYS_IN_WEEK):
+        if len(important_locations) == 0:
+            break
+
+        important = important_locations.pop()
+        first_candidate.append([important])
+
+    if len(important_locations) > 0:
+        permutations = compute_permutations(important_locations)
+        converted_permutations = convert_permutations(
+            permutations, first_candidate, pairwise_distances
+        )
+        candidate_schedules.extend(converted_permutations)
+    else:
+        candidate_schedules.append(first_candidate)
 
     while len(candidate_schedules) > 0:
         candidate = candidate_schedules.popleft()
@@ -267,9 +345,9 @@ def main():
     locations = load_locations()
 
     home = Location(no=0, lat=45.461915521005885, lng=-73.87317833852978, index=0)
-    important_locations = list(map(str, [110, 8793, 8293]))
+    important_locations = list(map(str, [110, 8793, 8293, 8058, 8589, 8197]))
 
-    schedules = make_schedule(home, locations, important_locations)
+    schedules = make_schedule(home, locations, important_locations, False)
 
     print(len(schedules))
     print("\n".join(map(json.dumps, schedules[:10])))
