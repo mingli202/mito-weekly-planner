@@ -4,10 +4,12 @@ from datetime import datetime
 
 import pandas as pd
 import requests
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from typing import Annotated
 
 from data import load_locations
 from models import Location, Req, Res, SetAddrModel, StoreInfo
@@ -103,8 +105,10 @@ async def googleScript():
 
 
 @app.post("/api/search")
-async def search(req: Req) -> Res:
+async def search(req: Req, referer: Annotated[str, Header()]) -> Res:
     q = req.q
+
+    print(referer)
 
     predictions = search_address(q)
 
