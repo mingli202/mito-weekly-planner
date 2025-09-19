@@ -8,7 +8,6 @@ import os
 import itertools
 from copy import deepcopy
 from collections import deque
-import heapq
 
 DAYS_IN_WEEK = 5
 
@@ -198,7 +197,7 @@ def make_schedule(
     locations: list[Location],
     important_locations: list[str],
     test: bool = False,
-) -> list[tuple[list[list[str]], float, float]]:
+) -> list[tuple[list[tuple[list[str], float]], float, float]]:
     if test:
         pairwise_distances, distances_from_home = placeholder_distances()
         important_locations = list(map(str, [1, 2, 3, 4, 5, 6, 7]))
@@ -206,7 +205,7 @@ def make_schedule(
         pairwise_distances, distances_from_home = compute_distances(home, locations)
 
     candidate_schedules: deque[list[list[str]]] = deque()
-    schedules: list[tuple[list[list[str]], float, float]] = []
+    schedules: list[tuple[list[tuple[list[str], float]], float, float]] = []
     already_seen: set[str] = set()
 
     def to_str(candidate: list[list[str]]) -> str:
@@ -317,25 +316,32 @@ def make_schedule(
         # not very important for distance from home
         weight = 0
         total_distance = 0
+        candidate_with_distances: list[tuple[list[str], float]] = []
+
         for day in candidate:
+            day_distance = 0
+            for i in range(len(day) - 1):
+                day_distance += pairwise_distances[day[i]][day[i + 1]]
+
             weight += (
-                sum(
-                    pow(pairwise_distances[day[i]][day[i + 1]], 3)
-                    for i in range(len(day) - 1)
-                )
+                pow(total_distance, 3)
                 + distances_from_home[day[0]] / 2
                 + distances_from_home[day[-1]] / 2
             )
             day.sort()
 
-            total_distance += (
-                sum(pairwise_distances[day[i]][day[i + 1]] for i in range(len(day) - 1))
-                + distances_from_home[day[0]]
-                + distances_from_home[day[-1]]
-            )
+            day_distance += distances_from_home[day[0]] + distances_from_home[day[-1]]
+
+            candidate_with_distances.append((day, day_distance))
+
+            total_distance += day_distance
 
         schedules.append(
-            (sorted(candidate, key=lambda x: x[0]), total_distance, weight)
+            (
+                sorted(candidate_with_distances, key=lambda x: x[0][1]),
+                total_distance,
+                weight,
+            )
         )
 
     return sorted(schedules, key=lambda x: x[2])

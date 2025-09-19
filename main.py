@@ -400,16 +400,17 @@ async def generate(store: Store) -> Res:
 
     html = [
         f"""
-        <div class="schedule-container" onclick="showSchedule({schedule[0]}, 'schedule-{
-            i
-        }-{now}')" id="schedule-{i}-{now}">
+        <div class="schedule-container" onclick="showSchedule({
+            [day[0] for day in schedule[0]]
+        }, 'schedule-{i}-{now}')" id="schedule-{i}-{now}">
           <p>Plan {i + 1} (~{round(schedule[1])}km)</p>
           <div style="display: flex; gap: 0.5rem">
             {
             "".join(
                 f'''
                 <div class="{days[k]} day">
-                    {"".join(f"<p>#{d}</p>" for d in day)}
+                    {"".join(f"<p>#{d}</p>" for d in day[0])}
+                    <p>{round(day[1])}km</p>
                 </div>
             '''
                 for k, day in enumerate(schedule[0])
