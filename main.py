@@ -4,12 +4,10 @@ from datetime import datetime
 
 import pandas as pd
 import requests
-from fastapi import FastAPI, Header
+from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from typing import Annotated
 
 from data import load_locations
 from models import Location, Req, Res, SetAddrModel, StoreInfo
@@ -20,6 +18,7 @@ StaticFiles.is_not_modified = lambda self, *args, **kwargs: False
 
 class Settings(BaseSettings):
     gmapsApiKey: str = ""
+    gmapsPrivateApiKey: str = ""
     model_config = SettingsConfigDict(env_file=".env")
 
 
@@ -105,10 +104,8 @@ async def googleScript():
 
 
 @app.post("/api/search")
-async def search(req: Req, referer: Annotated[str, Header()]) -> Res:
+async def search(req: Req) -> Res:
     q = req.q
-
-    print(referer)
 
     predictions = search_address(q)
 
@@ -161,7 +158,7 @@ def search_address(starting_address: str | None) -> list[tuple[str, str]]:
             },
         },
         headers={
-            "X-Goog-Api-Key": settings.gmapsApiKey,
+            "X-Goog-Api-Key": settings.gmapsPrivateApiKey,
             "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text",
             "Content-Type": "application/json",
         },
@@ -274,7 +271,7 @@ async def setStartingAddress(req: SetAddrModel) -> Res:
     placeRes = requests.get(
         f"https://places.googleapis.com/v1/places/{req.placeId}",
         headers={
-            "X-Goog-Api-Key": settings.gmapsApiKey,
+            "X-Goog-Api-Key": settings.gmapsPrivateApiKey,
             "X-Goog-FieldMask": "location",
             "Content-Type": "application/json",
         },
