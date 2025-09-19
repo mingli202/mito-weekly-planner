@@ -410,7 +410,8 @@ async def generate(store: Store) -> Res:
                 f'''
                 <div class="{days[k]} day">
                     {"".join(f"<p>#{d}</p>" for d in day[0])}
-                    <p>{round(day[1])}km</p>
+                    <div class="divider"></div>
+                    <p style="font-size: 0.8rem;">{round(day[1])}km</p>
                 </div>
             '''
                 for k, day in enumerate(schedule[0])

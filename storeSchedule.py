@@ -338,7 +338,7 @@ def make_schedule(
 
         schedules.append(
             (
-                sorted(candidate_with_distances, key=lambda x: x[0][1]),
+                sorted(candidate_with_distances, key=lambda x: x[1]),
                 total_distance,
                 weight,
             )
