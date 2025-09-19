@@ -139,8 +139,6 @@ def search_address(starting_address: str | None) -> list[tuple[str, str]]:
     if starting_address is None or starting_address.strip() == "":
         return []
 
-    print("request sent")
-
     res = requests.post(
         url="https://places.googleapis.com/v1/places:autocomplete",
         json={
@@ -166,6 +164,7 @@ def search_address(starting_address: str | None) -> list[tuple[str, str]]:
     )
 
     if not res.ok:
+        print(res.text)
         return []
 
     suggestions = res.json().get("suggestions")
